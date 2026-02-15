@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdf_maker"
+version = "0.1.0"
+description = "PDF Maker"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "ttkbootstrap>=1.10",
+    "Pillow>=10.0",
+    "pytest>=8.0",
+    "tkinterdnd2>=0.3",
+    "loguru>=0.7"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
