@@ -3,7 +3,7 @@
 # Return the list of Pillow Image objects
 from pathlib import Path
 from typing import List, Iterable
-from PIL import Image, ImageOps,UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 from loguru import logger
 
 SUPPORTED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff'}
@@ -49,4 +49,5 @@ def add_images(paths: Iterable[Path]) -> List[Image.Image]:
             images.append(img)
         except UnidentifiedImageError as e:
             logger.warning(f"'{path}' could not be identified as an image: {e}")
+            raise UnidentifiedImageError(f"'{path}' could not be identified as an image: {e}")
     return images
