@@ -25,7 +25,7 @@ def sample_rgb_image():
 def sample_images(tmp_image_dir):
     """Create sample image files in different formats."""
     images = {}
-    img = Image.new('RGB', (50,50), color='#0000FF')
+    image = Image.new('RGB', (50,50), color='#0000FF')
 
     for fmt, ext in [('JPEG', '.jpg'), ('PNG', '.png'), ('BMP', '.bmp'), ('TIFF', '.tiff')]:
         path = tmp_image_dir / f'test.{ext}'

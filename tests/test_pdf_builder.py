@@ -1,7 +1,8 @@
 import pytest
 import tempfile
 from pathlib import Path
-from hypothesis import given, strategies as st
+from hypothesis import given, settings, strategies as st
+from PIL import Image
 from tests.test_helpers import *
 from core import image_loader, pdf_builder
 
@@ -49,7 +50,10 @@ def test_builder_handles_empty_list(tmp_pdf_dir):
     with pytest.raises(ValueError, match="No images provided to build the PDF."):
         pdf_builder.build_pdf([], path)
 
-
+# Feature: test-suite, Property 5: PDF creation from images
+# Feature: test-suite, Property 7: multi-page PDF generation
+@settings(deadline=None)
+@pytest.mark.property
 @given(st.lists(
     st.tuples(
         st.integers(min_value=1,max_value=500), # width
@@ -75,7 +79,9 @@ def test_property_pdf_creation(img_sizes):
         assert get_page_count(path) == len(images), f"The quantity of images does not correspond to the dpf pages quantity"
 
 
-
+# Feature: test-suite, Property 6: preserving pages order
+@settings(deadline=None)
+@pytest.mark.property
 @given(st.lists(
     st.integers(min_value=0,max_value=255),
     min_size=2,
@@ -101,7 +107,10 @@ def test_property_pdf_creation_image_order_preserved(color_values):
             assert extracted is not None, f"Was unable to extract {page_num}"
             assert_images_similar(original_img, extracted, threshold=1.0)
 
+
+# Feature: test-suite, Property 8: preserving image dimensions
 @settings(deadline=None)
+@pytest.mark.property
 @given(st.lists(
     st.tuples(
         st.integers(min_value=1,max_value=500), # width

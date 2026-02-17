@@ -8,7 +8,7 @@ def build_pdf(images: List[Image.Image], output_path: Path) -> None:
 
     Parameters
     ----------
-    images: a list of PIL Image obgects already converted to RGB
+    images: a list of PIL Image objects already converted to RGB
     output_path: the path where the PDF should be saved. Should end with .pdf
     """
     if not images:

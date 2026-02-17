@@ -29,20 +29,16 @@ python -m venv .venv
    - Windows: `.venv\Scripts\activate`
    - macOS/Linux: `source .venv/bin/activate`
 
-4. Install dependencies:
+4. Install dependencies from `pyproject.toml`:
 ```bash
 pip install -e .
 ```
 
-Or install from requirements.txt:
-```bash
-pip install -r requirements.txt
-```
-
-**Note:** `pyproject.toml` is the source of truth for dependencies. To regenerate `requirements.txt`:
+**Fallback option:** If you prefer to use a `requirements.txt` file, you can generate it from `pyproject.toml`:
 ```bash
 pip install pip-tools
 pip-compile pyproject.toml -o requirements.txt
+pip install -r requirements.txt
 ```
 
 ## Usage
@@ -79,7 +75,6 @@ python -m src.main
 │   ├── test_image_loader.py   # Tests for image loading
 │   └── test_pdf_builder.py    # Tests for PDF generation
 ├── pyproject.toml             # Project configuration and dependencies
-├── requirements.txt           # Alternative dependency list
 └── README.md                  # This file
 ```
 
