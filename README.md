@@ -87,13 +87,58 @@ python -m src.main
 
 ### Running Tests
 
+The project includes a comprehensive test suite with both unit tests and property-based tests using Hypothesis.
+
+**Run all tests:**
 ```bash
-pytest tests/
+pytest
 ```
+
+**Run with verbose output:**
+```bash
+pytest -v
+```
+
+**Run specific test categories:**
+```bash
+# Run only property-based tests
+pytest -m property
+
+# Run only unit tests
+pytest -m unit
+
+# Run only integration tests
+pytest -m integration
+
+# Run tests from a specific file
+pytest tests/test_pdf_builder.py
+pytest tests/test_image_loader.py
+```
+
+**Run with coverage reporting:**
+
+First, uncomment the coverage settings in `pytest.ini`, then:
+```bash
+pytest
+```
+
+This will generate:
+- Terminal coverage report showing missing lines
+- HTML coverage report in `htmlcov/` directory (open `htmlcov/index.html` in a browser)
+
+**Property-Based Testing:**
+
+The test suite uses [Hypothesis](https://hypothesis.readthedocs.io/) for property-based testing, which automatically generates hundreds of test cases to verify that properties hold across a wide range of inputs. Property tests are marked with `@pytest.mark.property`.
+
+**Test Structure:**
+- `tests/test_image_loader.py` - Tests for image loading and validation
+- `tests/test_pdf_builder.py` - Tests for PDF generation
+- `tests/test_helpers.py` - Utility functions for creating test data
+- `tests/conftest.py` - Shared pytest fixtures
+- `pytest.ini` - Test configuration and markers
 
 ### Known Issues
 
-- Test files are currently empty and need implementation
 - `src/main.py` entry point needs to be created
 - Some error handling could be improved
 
@@ -102,6 +147,8 @@ pytest tests/
 - **ttkbootstrap**: Modern themed tkinter widgets
 - **Pillow**: Image processing and PDF generation
 - **pytest**: Testing framework
+- **hypothesis**: Property-based testing framework
+- **pypdf**: PDF reading and validation
 - **tkinterdnd2**: Drag-and-drop support (optional)
 - **loguru**: Logging utility (optional)
 

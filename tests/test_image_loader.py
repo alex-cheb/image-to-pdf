@@ -23,11 +23,11 @@ def test_positive_load_image(tmp_image_dir, fmt, ext):
     create_sample_rgb_image(path, (100, 100),'#FF0000', fmt)
     images = il.add_images([path])
     assert len(images) > 0, "No images loaded"
-    assert isinstance(images[0], Image.Image), "The image is not an instanse of a PIL Image type"
+    assert isinstance(images[0], Image.Image), "The image is not an instance of a PIL Image type"
     assert images[0].mode == 'RGB', f"Format {fmt} failed to load as RGB"
 
 
-def test_not_existing_load_image(tmp_image_dir):
+def test_nonexistent_file_raises_proper_error(tmp_image_dir):
     """
     Verifies the load image handles non existing files
     Requirement 2.1
@@ -66,12 +66,13 @@ def test_empty_list_load_image(tmp_image_dir):
     Requirement 2.4
     """
     images = il.add_images([])
-    assert images == list(), "The empty input does not return an empty list, but {images}"
+    assert images == list(), f"The empty input does not return an empty list, but {images}"
+
 
 def test_exif_orientation_handling(tmp_image_dir):
     """
     Verifies that EXIF orientation data is correctly applied
-    Requirements 1.3
+    Requirement 1.3
     """
     path = tmp_image_dir/'test_exif.jpg'
     img = Image.new('RGB', (200, 100),'#FF0000')
@@ -85,7 +86,7 @@ def test_exif_orientation_handling(tmp_image_dir):
     
 
 # Can be a parametrized test with several qty inputs.
-def test_bulk_image_upload(tmp_image_dir):
+def test_multiple_images_loaded(tmp_image_dir):
     """
     Verifies the proper image quantity is loaded
     Requirement 1.1
@@ -106,9 +107,9 @@ def test_bulk_image_upload(tmp_image_dir):
     ('RGBA', (255,0,0,255),'PNG', '.png'),
     ('L', (255,), 'TIFF', '.tiff')
 ])
-def test_various_color_modes_convert_during_load(tmp_image_dir, color_mode, color, fmt, ext):
+def test_color_modes_convert_to_rgb_during_load(tmp_image_dir, color_mode, color, fmt, ext):
     """
-    Verify that images in different color modes
+    Verifies that images in different color modes
     Are properly converted to RGB during image load.
     Requirement 1.2
     """
@@ -127,13 +128,13 @@ def test_various_color_modes_convert_during_load(tmp_image_dir, color_mode, colo
     (1,2),
     (100,100),   
 ], ids=lambda s: f"{s[0]}x{s[1]}")
-def test_verify_image_dimensions_preserved(tmp_image_dir, size):
+def test_image_dimensions_preserved(tmp_image_dir, size):
     """
     Verifies that the image dimensions are preserved
     during image load process
     Requirement 5.1
     """
-    path = tmp_image_dir/'test.jpg'
+    path = tmp_image_dir/f'test{size[0]}x{size[1]}.jpg'
     img = create_sample_rgb_image(path, size, '#0000FF', 'JPEG')
     assert img.size == size, \
         f"Initial image created with the wrong dimensions size expected to be {size}, but is {images[0].size}"
@@ -143,7 +144,7 @@ def test_verify_image_dimensions_preserved(tmp_image_dir, size):
 
 def test_preserve_file_order_during_load(tmp_image_dir):
     """
-    Verifies, the image order is preserved 
+    Verifies that the image order is preserved 
     during the load process
     Requirement 5.3
     """
