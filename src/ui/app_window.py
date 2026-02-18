@@ -38,6 +38,7 @@ class ImageToPdfApp(tb.Window):
         tb.Button(toolbar, text="Clear List", command=self.on_clear_list).pack(side=LEFT, padx=10, pady=5)
         tb.Button(toolbar, text="Create PDF", command=self.on_create_pdf).pack(side=LEFT, padx=10, pady=5)
 
+        
         # --- Main area: tree + side panel ---
         main_area = tb.Frame(self)
         main_area.pack(fill=BOTH, expand=True, padx=10, pady=10)
@@ -48,7 +49,8 @@ class ImageToPdfApp(tb.Window):
 
         tb.Button(side_panel, text="↑", width=3, command=self.on_move_up).pack(pady=(10, 2))
         tb.Button(side_panel, text="↓", width=3, command=self.on_move_down).pack(pady=(10, 2))
-        tb.Button(side_panel, text="↻", width=3, command=self.on_rotate).pack(pady=(10, 0))  # small gap before rotate
+        tb.Button(side_panel, text="↻", width=3, command=self.on_rotate).pack(pady=(10, 0))  
+        tb.Button(side_panel, text="X", width=3, command=self.on_delete).pack(pady=(10, 0))  
 
         # --- Treeview ---
         # style = ttk.Style()
@@ -191,6 +193,25 @@ class ImageToPdfApp(tb.Window):
 
         self.imgs_tree.item(item, image=tk_thumb)
         self._thumb_refs[item] = tk_thumb  # replace the old reference
+    def on_delete(self):
+        selected = self.imgs_tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select an image to delete.")
+            return
+
+        item = selected[0]
+        children = self.imgs_tree.get_children()
+        index = children.index(item)
+
+        # Remove from data and UI
+        self.loaded_images.pop(index)
+        self.imgs_tree.delete(item)
+        
+        # Clean up thumbnail reference
+        if item in self._thumb_refs:
+            del self._thumb_refs[item]
+        
+        self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
 
     #-----------------------Helpers------------------------------------------------------
     def _on_move_selected(self, direction: int):

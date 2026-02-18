@@ -132,6 +132,14 @@ The test suite uses [Hypothesis](https://hypothesis.readthedocs.io/) for propert
 - `tests/conftest.py` - Shared pytest fixtures
 - `pytest.ini` - Test configuration and markers
 
+## Roadmap & Architecture
+
+See [DESIGN.md](DESIGN.md) for:
+- Detailed architecture and design decisions
+- Planned features by phase (delete, quality settings, preview, drag-n-drop)
+- Implementation roadmap with effort estimates
+- Testing strategy and technical debt
+
 ### Known Issues
 
 - `src/main.py` entry point needs to be created
