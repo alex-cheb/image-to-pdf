@@ -15,12 +15,19 @@ from PIL import Image, ImageTk, UnidentifiedImageError
 from core.image_loader import add_images
 from core.pdf_builder import build_pdf
 
+TITLE = "Image to PDF Converter"
+THEME = "flatly"  # or "darkly", "cyborg", etc. (see https://ttkbootstrap.readthedocs.io/en/latest/themes/index.html)
+DEFAULT_SIZE = (600, 800)
+PREVIEW_DEFAULT_SIZE = (640, 480)
+CANVAS_BG_COLOR = "gray20"
+PREVIEW_TITLE_TEMPLATE = "Image Preview  - {index}/{total}"
+
 class ImageToPdfApp(tb.Window):
     THUMB_MAX = 94  # Max size for thumbnails in the list
     def __init__(self):
-        super().__init__(themename="flatly") # or any other theme
-        self.title("Image to PDF Converter")
-        self.geometry("600x800")
+        super().__init__(themename=THEME) # or any other theme
+        self.title(TITLE)
+        self.geometry(f"{DEFAULT_SIZE[0]}x{DEFAULT_SIZE[1]}")
 
         self.loaded_images: List[Image.Image] = []
         self._thumb_refs: dict[str, ImageTk.PhotoImage] = {}
@@ -51,6 +58,7 @@ class ImageToPdfApp(tb.Window):
         tb.Button(side_panel, text="↓", width=3, command=self.on_move_down).pack(pady=(10, 2))
         tb.Button(side_panel, text="↻", width=3, command=self.on_rotate).pack(pady=(10, 0))  
         tb.Button(side_panel, text="X", width=3, command=self.on_delete).pack(pady=(10, 0))  
+        tb.Button(side_panel, text="🔍", width=3, command=self.on_preview).pack(pady=(10, 0))  
 
         # --- Treeview ---
         # style = ttk.Style()
@@ -167,11 +175,19 @@ class ImageToPdfApp(tb.Window):
     
 
     def on_move_up(self):
+        """Move the selected image up in the list."""
         self._on_move_selected(-1)
 
     def on_move_down(self):
+        """Move the selected image down in the list.s"""
         self._on_move_selected(1)
+        
     def on_rotate(self):
+        """
+        Rotate the selected image clockwise by 90 degrees in place.
+
+        Does not clear the selection after rotation.
+        """
         selected = self.imgs_tree.selection()
         if not selected:
             return
@@ -193,7 +209,17 @@ class ImageToPdfApp(tb.Window):
 
         self.imgs_tree.item(item, image=tk_thumb)
         self._thumb_refs[item] = tk_thumb  # replace the old reference
+
+
     def on_delete(self):
+        """
+        Delete the selected image from the list.
+
+        If no image is selected, displays a warning message and does nothing.
+
+        Otherwise, removes the selected image from both the data list and the UI tree, and
+        updates the status bar to reflect the new image count.
+        """
         selected = self.imgs_tree.selection()
         if not selected:
             messagebox.showwarning("No Selection", "Please select an image to delete.")
@@ -213,6 +239,23 @@ class ImageToPdfApp(tb.Window):
         
         self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
 
+
+    def on_preview(self):
+        """Preview the selected image in a new window."""
+        selected = self.imgs_tree.selection()
+        if not selected:
+            return
+        
+        item = selected[0]
+        children = self.imgs_tree.get_children()
+        index = children.index(item)
+        pil_image = self.loaded_images[index]
+
+        PreviewDialog(self, pil_image, 
+            title=f"{PREVIEW_TITLE_TEMPLATE.format(index=index + 1, total=len(self.loaded_images))}")
+        
+        
+               
     #-----------------------Helpers------------------------------------------------------
     def _on_move_selected(self, direction: int):
         """
@@ -233,7 +276,84 @@ class ImageToPdfApp(tb.Window):
             return  # Out of bounds
         self.imgs_tree.move(item, "", new_idx)
         self.loaded_images.insert(new_idx, self.loaded_images.pop(current_idx))
+
+
+class PreviewDialog(tb.Toplevel):
+    """A dialog window to preview an image with zoom and fit-to-window functionality."""
+    def __init__(self, parent, pil_image: Image.Image, title: str | None =None):
+        super().__init__(parent)
+        self.title(title or "Image Preview")
+        self.geometry(f"{PREVIEW_DEFAULT_SIZE[0]}x{PREVIEW_DEFAULT_SIZE[1]}")
+
+        self.original = pil_image.copy()  # Keep original for zooming
+        self.zoom = 1.0
+        self._preview_images = []  # To keep references to PhotoImage objects
+
+        frame = tb.Frame(self)
+        frame.pack(fill=BOTH, expand=True)
+        # Creating the scrollbars
+        vbar = tb.Scrollbar(frame, orient=VERTICAL)
+        hbar = tb.Scrollbar(frame, orient=HORIZONTAL)
+        # Create canvas
+        self.canvas = tb.Canvas(frame, bg=CANVAS_BG_COLOR, 
+                    yscrollcommand=vbar.set, xscrollcommand=hbar.set)
+        # Configure scrollbars to control the canvas
+        vbar.config(command=self.canvas.yview)
+        hbar.config(command=self.canvas.xview)
+        self.label = tb.Label(self, 
+                    text="A - full size, F - fit to window, +/- - zoom", anchor="center")
+        self.label.pack(side=BOTTOM, fill=X)
+
+        # Place the scrollbars and canvas in the frame
+        vbar.pack(side=RIGHT, fill=Y)
+        hbar.pack(side=BOTTOM, fill=X)
+        self.canvas.pack(fill=BOTH, expand=True)
+
+        # Event bindings for keyboard controls
+        self.bind('<Escape>', lambda e: self.destroy())
+        self.bind('<f>', lambda e: self.fit_to_window())
+        self.bind('<a>', lambda e: self.actual_size())
+        self.bind('<plus>', lambda e: self.zoom_img(factor=1.1))
+        self.bind('<minus>', lambda e: self.zoom_img(factor=0.9))
+
+        self.fit_to_window()
+    #-----------------------Image display and manipulation------------------------------------------------------
+    def fit_to_window(self):
+        """Resize the image to fit within the current window size while maintaining aspect ratio."""
+        width, height = self.winfo_width(), self.winfo_height()
+        if width <= 1 or height <= 1:  # Initial size might be 1x1, use default in that case
+            width, height = PREVIEW_DEFAULT_SIZE
         
+        img_copy = self.original.copy()
+        img_copy.thumbnail((width, height), Image.Resampling.LANCZOS)
+        self._update_canvas(img_copy)
+    
+    def actual_size(self):
+        """A handler to display the image at its actual size (100% zoom)."""
+        self._update_canvas(self.original.copy())
+
+    def zoom_img(self, factor: float):
+        """ A handler for zooming the image in or out by the given factor."""
+        self.zoom *= factor
+        width, height = self.original.size
+        new_size = (int(width * self.zoom), int(height * self.zoom))
+        img = self.original.resize(new_size, Image.Resampling.LANCZOS)
+        self._update_canvas(img)
+
+    def _update_canvas(self, pil_image: Image.Image):
+        """ A helper method to update the canvas with the given PIL image."""
+        tk_img = ImageTk.PhotoImage(pil_image)
+
+        # Place the image in the center of the canvas
+        cw, ch = self.canvas.winfo_width(), self.canvas.winfo_height()
+        if cw <= 1 or ch <= 1:  # Initial size might be 1x1, use image size in that case
+            self.after(100, lambda: self._update_canvas(pil_image))  # Try again after a short delay
+            return
+        
+        self.canvas.delete("all")
+        self.canvas.create_image(cw//2, ch//2, image=tk_img, anchor="center")
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
+        self._preview_images.append(tk_img)  # Keep reference to prevent GC
 
 if __name__ == "__main__":
     app = ImageToPdfApp()
