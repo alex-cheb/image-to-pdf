@@ -29,7 +29,6 @@ def sample_images(tmp_image_dir):
 
     for fmt, ext in [('JPEG', '.jpg'), ('PNG', '.png'), ('BMP', '.bmp'), ('TIFF', '.tiff')]:
         path = tmp_image_dir / f'test{ext}'
-        # sample_rgb_image.save(path, format=fmt)
         image.save(path, format=fmt)
         images[fmt.lower()] = path
     return images

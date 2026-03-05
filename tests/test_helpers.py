@@ -41,8 +41,6 @@ def assert_images_equal(first_image, second_image):
 
 def assert_images_similar(first_image, second_image, threshold=1.0):
     """Check if two images are visibly similar within a threshold"""
-    # if first_image.size != second_image.size or first_image.mode != second_image.mode:
-    #     return False
     assert first_image.size == second_image.size
     assert first_image.mode == second_image.mode
 
