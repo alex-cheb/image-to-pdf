@@ -304,7 +304,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
             )
             self._thumb_refs[row_id] = tk_thumb
 
-        self.status.config(text=f"{len(self.loaded_images)} image(s) added to list.")
+        self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
 
 
 class PreviewDialog(tb.Toplevel):
