@@ -9,6 +9,7 @@ import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from PIL import Image, ImageTk, UnidentifiedImageError
 
@@ -22,10 +23,11 @@ PREVIEW_DEFAULT_SIZE = (640, 480)
 CANVAS_BG_COLOR = "gray20"
 PREVIEW_TITLE_TEMPLATE = "Image Preview  - {index}/{total}"
 
-class ImageToPdfApp(tb.Window):
+class ImageToPdfApp(TkinterDnD.Tk):
     THUMB_MAX = 94  # Max size for thumbnails in the list
     def __init__(self):
-        super().__init__(themename=THEME) # or any other theme
+        super().__init__() 
+        style = tb.Style(theme=THEME)
         self.title(TITLE)
         self.geometry(f"{DEFAULT_SIZE[0]}x{DEFAULT_SIZE[1]}")
 
@@ -50,7 +52,7 @@ class ImageToPdfApp(tb.Window):
         main_area = tb.Frame(self)
         main_area.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-        # --- Right panel: selection-level actions ---
+               # --- Right panel: selection-level actions ---
         side_panel = tb.Frame(main_area)
         side_panel.pack(side=RIGHT, fill=Y, padx=(5, 0))
 
@@ -77,6 +79,12 @@ class ImageToPdfApp(tb.Window):
         style = ttk.Style()
         style.configure("Treeview", rowheight=self.THUMB_MAX + 10)  # Add some padding for the thumbnail
         self.imgs_tree.pack(fill=BOTH, expand=True)
+
+        try:
+            self.imgs_tree.drop_target_register(DND_FILES)
+            self.imgs_tree.dnd_bind('<<Drop>>', self.on_drop_files)
+        except Exception as e:
+            messagebox.showerror("Error", f"Drag-and-drop failure: {e}")
         
         # --- Status bar ---
         self.status = tb.Label(self, text="No images loaded.", anchor="w")
@@ -85,52 +93,54 @@ class ImageToPdfApp(tb.Window):
    
     #-----------------------Event Handlers------------------------------------------------------
     def on_add_images(self):
-        """
-        Open a file dialog to select images to add to the list.
-
-        If images are selected, attempt to open them using Pillow. If any of the images
-        cannot be opened (e.g. due to a corrupt file), show an error message. If any
-        unexpected error occurs while loading the images, show a generic error message.
-
-        If the images are loaded successfully, add them to the list and update the status
-        label to reflect the number of images loaded.
-        """
+        """Open a file dialog to select images to add to list"""
         file_paths = filedialog.askopenfilenames(
-            title="Select Images",
+            title="Select images",
             filetypes=[("Image Files", ['.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff'])]
         )
-        
+
         if not file_paths:
-            return  # User cancelled the dialog
-        try:
-            new_imgs = add_images(file_paths)   # returns a list of Pillow Image objects
-        except UnidentifiedImageError as e:
-            messagebox.showerror("Error", f"Corrupt image. One of the files cannot be opened: {e}")
-        except Exception as exc:               # any unexpected error
-            messagebox.showerror("Error", f"Failed to load images:\n{exc}")
             return
-        self.loaded_images.extend(new_imgs)
-        for path_str, pil_img in zip(file_paths, new_imgs):
-            # ----create a thumbnail -------------------------------------------------
-            thumb = pil_img.copy()
-            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
 
-            # ----convert to a Tk‑compatible PhotoImage -------------------------------
-            # ImageTk.PhotoImage handles the PNG encoding internally.
-            tk_thumb = ImageTk.PhotoImage(thumb)
+        try:
+            new_imgs = add_images(file_paths)
+            self._add_images_to_list(file_paths, new_imgs)
+        except UnidentifiedImageError as e:
+            messagebox.showerror("Error", f"Corrupt image. One of the images cannot be opened: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load dropped images: {e}")
+    
+    def on_drop_files(self, event):
+        """Handler for a drag and drop images"""
+        dropped = event.data
 
-            row_id = self.imgs_tree.insert(
-                "",
-                "end",
-                text="",                    # not used when show="headings"
-                values=(Path(path_str).name,),
-                image=tk_thumb              # ← thumbnail goes here (left side)
-            )
+        # Remove potential extra chars and split by spaces
+        if dropped.startswith('{'):
+            file_paths = []
+            current = ""
+            in_braces = False
+            for char in dropped:
+                if char == '{':
+                    in_braces = True
+                elif char == '}':
+                    in_braces = False
+                    if current:
+                        file_paths.append(current)
+                        current = ""
+                elif in_braces:
+                    current += char
+        else:
+            file_paths = dropped.split()
 
-            # ----keep a strong reference so Tk does not GC the image ---------------
-            self._thumb_refs[row_id] = tk_thumb
-
-        self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
+        if not file_paths:
+            return
+        try:
+            new_imgs = add_images(file_paths)
+            self._add_images_to_list(file_paths, new_imgs)
+        except UnidentifiedImageError as e:
+            messagebox.showerror("Error", f"Corrupt image. One of the images cannot be opened: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load dropped images: {e}")
 
     def on_clear_list(self):
         """
@@ -276,6 +286,25 @@ class ImageToPdfApp(tb.Window):
             return  # Out of bounds
         self.imgs_tree.move(item, "", new_idx)
         self.loaded_images.insert(new_idx, self.loaded_images.pop(current_idx))
+    
+    def _add_images_to_list(self, file_paths, new_imgs):
+        """Shared logic for adding images to the list (D-n-D and add)"""
+        self.loaded_images.extend(new_imgs)
+        for path_str, pil_img in zip (file_paths, new_imgs):
+            thumb = pil_img.copy()
+            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
+            tk_thumb = ImageTk.PhotoImage(thumb)
+
+            row_id = self.imgs_tree.insert(
+                "",
+                "end",
+                text="",
+                values=(Path(path_str).name,),
+                image=tk_thumb
+            )
+            self._thumb_refs[row_id] = tk_thumb
+
+        self.status.config(text=f"{len(self.loaded_images)} image(s) added to list.")
 
 
 class PreviewDialog(tb.Toplevel):
