@@ -40,3 +40,6 @@ Thumbs.db
 # Project specific - temporary test files
 *.pdf
 test_images/
+
+# Logs
+logs/

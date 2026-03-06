@@ -4,12 +4,14 @@ A simple, user-friendly desktop application for converting multiple images into 
 
 ## Features
 
-- **Drag and Add Images**: Select multiple images through a file dialog
-- **Visual Preview**: View thumbnails of loaded images in an organized list
-- **Reorder Images**: Move images up or down to arrange them in your desired order
+- **Drag-and-Drop Support**: Drag image files directly onto the application window
+- **Add Images**: Select multiple images through a file dialog
+- **Visual Preview**: View thumbnails of loaded images in an organized list with full-size preview
+- **Image Management**: Delete, reorder (move up/down), and rotate images
 - **Batch Conversion**: Convert all loaded images into a single PDF file
 - **EXIF Orientation Support**: Automatically handles image rotation based on EXIF data
 - **Multiple Format Support**: Works with JPG, JPEG, PNG, BMP, GIF, and TIFF files
+- **Logging**: Automatic logging to `logs/app.log` with rotation
 
 ## Requirements
 
@@ -48,17 +50,23 @@ Run the application:
 python src/main.py
 ```
 
-Or:
+Or use the CLI entry point:
 ```bash
-python -m src.main
+pdf-maker
 ```
 
 ### How to Use:
 
-1. **Add Images**: Click the "Add Images" button to select image files from your computer
-2. **Reorder** (optional): Select an image and use "Move Up ↑" or "Move Down ↓" buttons to change the order
-3. **Create PDF**: Click "Create PDF" and choose where to save your output file
-4. **Clear List** (optional): Remove all loaded images to start fresh
+1. **Add Images**: 
+   - Click the "Add Images" button to select image files, OR
+   - Drag and drop image files directly onto the window
+2. **Preview**: Double-click any image to view it full-size with zoom controls
+3. **Manage Images** (optional):
+   - **Rotate**: Select an image and click "Rotate" to rotate 90° clockwise
+   - **Reorder**: Use "Move Up ↑" or "Move Down ↓" buttons to change the order
+   - **Delete**: Remove selected image from the list
+   - **Clear List**: Remove all loaded images to start fresh
+4. **Create PDF**: Click "Create PDF" and choose where to save your output file
 
 ## Project Structure
 
@@ -69,12 +77,18 @@ python -m src.main
 │   │   ├── image_loader.py    # Image validation and loading logic
 │   │   └── pdf_builder.py     # PDF generation logic
 │   ├── ui/
-│   │   └── app_window.py      # Main GUI application
-│   └── main.py                # Application entry point (to be implemented)
+│   │   └── app_window.py      # Main GUI application with drag-and-drop
+│   └── main.py                # Application entry point with logging setup
 ├── tests/
 │   ├── test_image_loader.py   # Tests for image loading
-│   └── test_pdf_builder.py    # Tests for PDF generation
+│   ├── test_pdf_builder.py    # Tests for PDF generation
+│   ├── test_helpers.py        # Test utility functions
+│   └── conftest.py            # Shared pytest fixtures
+├── logs/
+│   └── app.log                # Application logs (auto-created)
 ├── pyproject.toml             # Project configuration and dependencies
+├── pytest.ini                 # Test configuration
+├── DESIGN.md                  # Architecture and design decisions
 └── README.md                  # This file
 ```
 
@@ -94,66 +108,85 @@ pytest
 pytest -v
 ```
 
+**Run with coverage reporting:**
+```bash
+pytest --cov=src --cov-report=html --cov-report=term
+```
+
+This will generate:
+- Terminal coverage report showing line coverage percentages
+- HTML coverage report in `htmlcov/` directory (open `htmlcov/index.html` in a browser)
+
+**Run specific test files:**
+```bash
+# Test image loading module
+pytest tests/test_image_loader.py
+
+# Test PDF generation module
+pytest tests/test_pdf_builder.py
+
+# Run with verbose output for a specific file
+pytest -v tests/test_image_loader.py
+```
+
 **Run specific test categories:**
 ```bash
 # Run only property-based tests
 pytest -m property
 
-# Run only unit tests
+# Run only unit tests (if marked)
 pytest -m unit
-
-# Run only integration tests
-pytest -m integration
-
-# Run tests from a specific file
-pytest tests/test_pdf_builder.py
-pytest tests/test_image_loader.py
 ```
-
-**Run with coverage reporting:**
-
-First, uncomment the coverage settings in `pytest.ini`, then:
-```bash
-pytest
-```
-
-This will generate:
-- Terminal coverage report showing missing lines
-- HTML coverage report in `htmlcov/` directory (open `htmlcov/index.html` in a browser)
 
 **Property-Based Testing:**
 
-The test suite uses [Hypothesis](https://hypothesis.readthedocs.io/) for property-based testing, which automatically generates hundreds of test cases to verify that properties hold across a wide range of inputs. Property tests are marked with `@pytest.mark.property`.
+The test suite uses [Hypothesis](https://hypothesis.readthedocs.io/) for property-based testing, which automatically generates hundreds of test cases to verify that correctness properties hold across a wide range of inputs. 
+
+Property tests validate universal behaviors such as:
+- Image count preservation during loading
+- RGB mode conversion for all color modes
+- Dimension preservation in PDFs
+- Image order preservation
+- Multi-page PDF generation
+
+Each property test runs a minimum of 100 iterations with randomly generated test data.
 
 **Test Structure:**
-- `tests/test_image_loader.py` - Tests for image loading and validation
-- `tests/test_pdf_builder.py` - Tests for PDF generation
-- `tests/test_helpers.py` - Utility functions for creating test data
-- `tests/conftest.py` - Shared pytest fixtures
+- `tests/test_image_loader.py` - Unit and property tests for image loading
+- `tests/test_pdf_builder.py` - Unit and property tests for PDF generation
+- `tests/test_helpers.py` - Utility functions for creating test images and validating PDFs
+- `tests/conftest.py` - Shared pytest fixtures (temp directories, sample images)
 - `pytest.ini` - Test configuration and markers
+
+**Coverage Goals:**
+- Line coverage: 90%+ for core modules
+- Branch coverage: 85%+ for error handling
+- All 13 correctness properties have corresponding property-based tests
 
 ## Roadmap & Architecture
 
 See [DESIGN.md](DESIGN.md) for:
 - Detailed architecture and design decisions
-- Planned features by phase (delete, quality settings, preview, drag-n-drop)
-- Implementation roadmap with effort estimates
-- Testing strategy and technical debt
+- Current implementation status (all core features complete)
+- Planned features (graceful non-image file handling, keyboard shortcuts, i18n)
+- Technical decisions and rationale
+- Testing strategy and coverage goals
 
 ### Known Issues
 
-- `src/main.py` entry point needs to be created
-- Some error handling could be improved
+- Drag-and-drop shows errors for non-image files (planned fix in v0.2.0)
+- UI text partially in Ukrainian
+- No keyboard shortcuts for main window
 
 ## Dependencies
 
-- **ttkbootstrap**: Modern themed tkinter widgets
 - **Pillow**: Image processing and PDF generation
+- **ttkbootstrap**: Modern themed tkinter widgets
+- **tkinterdnd2**: Cross-platform drag-and-drop support
+- **loguru**: Logging with automatic rotation
 - **pytest**: Testing framework
 - **hypothesis**: Property-based testing framework
-- **pypdf**: PDF reading and validation
-- **tkinterdnd2**: Drag-and-drop support (optional)
-- **loguru**: Logging utility (optional)
+- **pypdf**: PDF reading and validation for tests
 
 ## License
 

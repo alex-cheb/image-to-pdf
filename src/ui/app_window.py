@@ -9,18 +9,27 @@ import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from PIL import Image, ImageTk, UnidentifiedImageError
 
 from core.image_loader import add_images
 from core.pdf_builder import build_pdf
 
-class ImageToPdfApp(tb.Window):
+TITLE = "Image to PDF Converter"
+THEME = "flatly"  # or "darkly", "cyborg", etc. (see https://ttkbootstrap.readthedocs.io/en/latest/themes/index.html)
+DEFAULT_SIZE = (600, 800)
+PREVIEW_DEFAULT_SIZE = (640, 480)
+CANVAS_BG_COLOR = "gray20"
+PREVIEW_TITLE_TEMPLATE = "Image Preview  - {index}/{total}"
+
+class ImageToPdfApp(TkinterDnD.Tk):
     THUMB_MAX = 94  # Max size for thumbnails in the list
     def __init__(self):
-        super().__init__(themename="flatly") # or any other theme
-        self.title("Image to PDF Converter")
-        self.geometry("600x800")
+        super().__init__() 
+        style = tb.Style(theme=THEME)
+        self.title(TITLE)
+        self.geometry(f"{DEFAULT_SIZE[0]}x{DEFAULT_SIZE[1]}")
 
         self.loaded_images: List[Image.Image] = []
         self._thumb_refs: dict[str, ImageTk.PhotoImage] = {}
@@ -43,7 +52,7 @@ class ImageToPdfApp(tb.Window):
         main_area = tb.Frame(self)
         main_area.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-        # --- Right panel: selection-level actions ---
+               # --- Right panel: selection-level actions ---
         side_panel = tb.Frame(main_area)
         side_panel.pack(side=RIGHT, fill=Y, padx=(5, 0))
 
@@ -51,6 +60,7 @@ class ImageToPdfApp(tb.Window):
         tb.Button(side_panel, text="↓", width=3, command=self.on_move_down).pack(pady=(10, 2))
         tb.Button(side_panel, text="↻", width=3, command=self.on_rotate).pack(pady=(10, 0))  
         tb.Button(side_panel, text="X", width=3, command=self.on_delete).pack(pady=(10, 0))  
+        tb.Button(side_panel, text="🔍", width=3, command=self.on_preview).pack(pady=(10, 0))  
 
         # --- Treeview ---
         # style = ttk.Style()
@@ -69,6 +79,12 @@ class ImageToPdfApp(tb.Window):
         style = ttk.Style()
         style.configure("Treeview", rowheight=self.THUMB_MAX + 10)  # Add some padding for the thumbnail
         self.imgs_tree.pack(fill=BOTH, expand=True)
+
+        try:
+            self.imgs_tree.drop_target_register(DND_FILES)
+            self.imgs_tree.dnd_bind('<<Drop>>', self.on_drop_files)
+        except Exception as e:
+            messagebox.showerror("Error", f"Drag-and-drop failure: {e}")
         
         # --- Status bar ---
         self.status = tb.Label(self, text="No images loaded.", anchor="w")
@@ -77,52 +93,54 @@ class ImageToPdfApp(tb.Window):
    
     #-----------------------Event Handlers------------------------------------------------------
     def on_add_images(self):
-        """
-        Open a file dialog to select images to add to the list.
-
-        If images are selected, attempt to open them using Pillow. If any of the images
-        cannot be opened (e.g. due to a corrupt file), show an error message. If any
-        unexpected error occurs while loading the images, show a generic error message.
-
-        If the images are loaded successfully, add them to the list and update the status
-        label to reflect the number of images loaded.
-        """
+        """Open a file dialog to select images to add to list"""
         file_paths = filedialog.askopenfilenames(
-            title="Select Images",
+            title="Select images",
             filetypes=[("Image Files", ['.jpg', '*.jpeg', '*.png', '*.bmp', '*.gif', '*.tiff'])]
         )
-        
+
         if not file_paths:
-            return  # User cancelled the dialog
-        try:
-            new_imgs = add_images(file_paths)   # returns a list of Pillow Image objects
-        except UnidentifiedImageError as e:
-            messagebox.showerror("Error", f"Corrupt image. One of the files cannot be opened: {e}")
-        except Exception as exc:               # any unexpected error
-            messagebox.showerror("Error", f"Failed to load images:\n{exc}")
             return
-        self.loaded_images.extend(new_imgs)
-        for path_str, pil_img in zip(file_paths, new_imgs):
-            # ----create a thumbnail -------------------------------------------------
-            thumb = pil_img.copy()
-            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
 
-            # ----convert to a Tk‑compatible PhotoImage -------------------------------
-            # ImageTk.PhotoImage handles the PNG encoding internally.
-            tk_thumb = ImageTk.PhotoImage(thumb)
+        try:
+            new_imgs = add_images(file_paths)
+            self._add_images_to_list(file_paths, new_imgs)
+        except UnidentifiedImageError as e:
+            messagebox.showerror("Error", f"Corrupt image. One of the images cannot be opened: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load dropped images: {e}")
+    
+    def on_drop_files(self, event):
+        """Handler for a drag and drop images"""
+        dropped = event.data
 
-            row_id = self.imgs_tree.insert(
-                "",
-                "end",
-                text="",                    # not used when show="headings"
-                values=(Path(path_str).name,),
-                image=tk_thumb              # ← thumbnail goes here (left side)
-            )
+        # Remove potential extra chars and split by spaces
+        if dropped.startswith('{'):
+            file_paths = []
+            current = ""
+            in_braces = False
+            for char in dropped:
+                if char == '{':
+                    in_braces = True
+                elif char == '}':
+                    in_braces = False
+                    if current:
+                        file_paths.append(current)
+                        current = ""
+                elif in_braces:
+                    current += char
+        else:
+            file_paths = dropped.split()
 
-            # ----keep a strong reference so Tk does not GC the image ---------------
-            self._thumb_refs[row_id] = tk_thumb
-
-        self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
+        if not file_paths:
+            return
+        try:
+            new_imgs = add_images(file_paths)
+            self._add_images_to_list(file_paths, new_imgs)
+        except UnidentifiedImageError as e:
+            messagebox.showerror("Error", f"Corrupt image. One of the images cannot be opened: {e}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load dropped images: {e}")
 
     def on_clear_list(self):
         """
@@ -167,11 +185,19 @@ class ImageToPdfApp(tb.Window):
     
 
     def on_move_up(self):
+        """Move the selected image up in the list."""
         self._on_move_selected(-1)
 
     def on_move_down(self):
+        """Move the selected image down in the list.s"""
         self._on_move_selected(1)
+        
     def on_rotate(self):
+        """
+        Rotate the selected image clockwise by 90 degrees in place.
+
+        Does not clear the selection after rotation.
+        """
         selected = self.imgs_tree.selection()
         if not selected:
             return
@@ -193,7 +219,17 @@ class ImageToPdfApp(tb.Window):
 
         self.imgs_tree.item(item, image=tk_thumb)
         self._thumb_refs[item] = tk_thumb  # replace the old reference
+
+
     def on_delete(self):
+        """
+        Delete the selected image from the list.
+
+        If no image is selected, displays a warning message and does nothing.
+
+        Otherwise, removes the selected image from both the data list and the UI tree, and
+        updates the status bar to reflect the new image count.
+        """
         selected = self.imgs_tree.selection()
         if not selected:
             messagebox.showwarning("No Selection", "Please select an image to delete.")
@@ -213,6 +249,23 @@ class ImageToPdfApp(tb.Window):
         
         self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
 
+
+    def on_preview(self):
+        """Preview the selected image in a new window."""
+        selected = self.imgs_tree.selection()
+        if not selected:
+            return
+        
+        item = selected[0]
+        children = self.imgs_tree.get_children()
+        index = children.index(item)
+        pil_image = self.loaded_images[index]
+
+        PreviewDialog(self, pil_image, 
+            title=f"{PREVIEW_TITLE_TEMPLATE.format(index=index + 1, total=len(self.loaded_images))}")
+        
+        
+               
     #-----------------------Helpers------------------------------------------------------
     def _on_move_selected(self, direction: int):
         """
@@ -233,7 +286,103 @@ class ImageToPdfApp(tb.Window):
             return  # Out of bounds
         self.imgs_tree.move(item, "", new_idx)
         self.loaded_images.insert(new_idx, self.loaded_images.pop(current_idx))
+    
+    def _add_images_to_list(self, file_paths, new_imgs):
+        """Shared logic for adding images to the list (D-n-D and add)"""
+        self.loaded_images.extend(new_imgs)
+        for path_str, pil_img in zip (file_paths, new_imgs):
+            thumb = pil_img.copy()
+            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
+            tk_thumb = ImageTk.PhotoImage(thumb)
+
+            row_id = self.imgs_tree.insert(
+                "",
+                "end",
+                text="",
+                values=(Path(path_str).name,),
+                image=tk_thumb
+            )
+            self._thumb_refs[row_id] = tk_thumb
+
+        self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
+
+
+class PreviewDialog(tb.Toplevel):
+    """A dialog window to preview an image with zoom and fit-to-window functionality."""
+    def __init__(self, parent, pil_image: Image.Image, title: str | None =None):
+        super().__init__(parent)
+        self.title(title or "Image Preview")
+        self.geometry(f"{PREVIEW_DEFAULT_SIZE[0]}x{PREVIEW_DEFAULT_SIZE[1]}")
+
+        self.original = pil_image.copy()  # Keep original for zooming
+        self.zoom = 1.0
+        self._preview_images = []  # To keep references to PhotoImage objects
+
+        frame = tb.Frame(self)
+        frame.pack(fill=BOTH, expand=True)
+        # Creating the scrollbars
+        vbar = tb.Scrollbar(frame, orient=VERTICAL)
+        hbar = tb.Scrollbar(frame, orient=HORIZONTAL)
+        # Create canvas
+        self.canvas = tb.Canvas(frame, bg=CANVAS_BG_COLOR, 
+                    yscrollcommand=vbar.set, xscrollcommand=hbar.set)
+        # Configure scrollbars to control the canvas
+        vbar.config(command=self.canvas.yview)
+        hbar.config(command=self.canvas.xview)
+        self.label = tb.Label(self, 
+                    text="A - full size, F - fit to window, +/- - zoom", anchor="center")
+        self.label.pack(side=BOTTOM, fill=X)
+
+        # Place the scrollbars and canvas in the frame
+        vbar.pack(side=RIGHT, fill=Y)
+        hbar.pack(side=BOTTOM, fill=X)
+        self.canvas.pack(fill=BOTH, expand=True)
+
+        # Event bindings for keyboard controls
+        self.bind('<Escape>', lambda e: self.destroy())
+        self.bind('<f>', lambda e: self.fit_to_window())
+        self.bind('<a>', lambda e: self.actual_size())
+        self.bind('<plus>', lambda e: self.zoom_img(factor=1.1))
+        self.bind('<minus>', lambda e: self.zoom_img(factor=0.9))
+
+        self.fit_to_window()
+    #-----------------------Image display and manipulation------------------------------------------------------
+    def fit_to_window(self):
+        """Resize the image to fit within the current window size while maintaining aspect ratio."""
+        width, height = self.winfo_width(), self.winfo_height()
+        if width <= 1 or height <= 1:  # Initial size might be 1x1, use default in that case
+            width, height = PREVIEW_DEFAULT_SIZE
         
+        img_copy = self.original.copy()
+        img_copy.thumbnail((width, height), Image.Resampling.LANCZOS)
+        self._update_canvas(img_copy)
+    
+    def actual_size(self):
+        """A handler to display the image at its actual size (100% zoom)."""
+        self._update_canvas(self.original.copy())
+
+    def zoom_img(self, factor: float):
+        """ A handler for zooming the image in or out by the given factor."""
+        self.zoom *= factor
+        width, height = self.original.size
+        new_size = (int(width * self.zoom), int(height * self.zoom))
+        img = self.original.resize(new_size, Image.Resampling.LANCZOS)
+        self._update_canvas(img)
+
+    def _update_canvas(self, pil_image: Image.Image):
+        """ A helper method to update the canvas with the given PIL image."""
+        tk_img = ImageTk.PhotoImage(pil_image)
+
+        # Place the image in the center of the canvas
+        cw, ch = self.canvas.winfo_width(), self.canvas.winfo_height()
+        if cw <= 1 or ch <= 1:  # Initial size might be 1x1, use image size in that case
+            self.after(100, lambda: self._update_canvas(pil_image))  # Try again after a short delay
+            return
+        
+        self.canvas.delete("all")
+        self.canvas.create_image(cw//2, ch//2, image=tk_img, anchor="center")
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
+        self._preview_images.append(tk_img)  # Keep reference to prevent GC
 
 if __name__ == "__main__":
     app = ImageToPdfApp()
