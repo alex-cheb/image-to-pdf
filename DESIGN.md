@@ -59,11 +59,12 @@ src/
 
 - Full-size preview window (`PreviewDialog` class)
 - Zoom in/out (+ / - keys)
+- Ctrl + Mouse wheel zoom (smooth zooming from current view)
 - Fit to window (F key)
 - Actual size view (A key)
 - Scrollable canvas for large images
 - Close with Escape key
-- Mouse wheel zoom support (planned enhancement)
+- Tooltips on all buttons for better UX
 
 ### Drag-and-Drop Support
 **Status**: Complete
@@ -86,46 +87,6 @@ src/
 ---
 
 ## Planned Features 📋
-
-### Mouse Wheel Zoom in Preview
-**Priority**: High  
-**Effort**: 1-2 hours
-
-**Current Behavior**:
-- Preview window supports zoom via keyboard (+ / - keys)
-- No mouse wheel support for zooming
-
-**Desired Behavior**:
-- **Mouse wheel up**: Zoom in (same as + key)
-- **Mouse wheel down**: Zoom out (same as - key)
-- **Ctrl + Mouse wheel**: Alternative zoom control (optional)
-- Zoom should center on mouse cursor position (advanced) or image center (simple)
-
-**Implementation Plan**:
-
-Update `PreviewDialog` class in `ui/app_window.py`:
-```python
-def __init__(self, parent, image):
-    # ... existing code ...
-    
-    # Bind mouse wheel events
-    self.canvas.bind("<MouseWheel>", self._on_mousewheel)  # Windows/macOS
-    self.canvas.bind("<Button-4>", self._on_mousewheel)    # Linux scroll up
-    self.canvas.bind("<Button-5>", self._on_mousewheel)    # Linux scroll down
-
-def _on_mousewheel(self, event):
-    """Handle mouse wheel zoom"""
-    if event.num == 4 or event.delta > 0:  # Scroll up = zoom in
-        self.zoom_in()
-    elif event.num == 5 or event.delta < 0:  # Scroll down = zoom out
-        self.zoom_out()
-```
-
-**Testing**:
-- Manual testing: scroll wheel in preview zooms in/out
-- Verify cross-platform behavior (Windows, macOS, Linux)
-
----
 
 ### Graceful Non-Image File Handling
 **Priority**: Medium  
@@ -222,6 +183,11 @@ Update `on_drop_files()` in `ui/app_window.py` to use lenient loading.
 - Catches edge cases that manual tests miss
 - Validates properties across wide input ranges
 
+### Why Ctrl+MouseWheel for Zoom?
+- Prevents accidental zooming while scrolling through content
+- Standard convention in many image viewers and browsers
+- Leaves plain scroll wheel available for future scrolling features
+
 ---
 
 ## Testing Strategy
@@ -247,7 +213,6 @@ Update `on_drop_files()` in `ui/app_window.py` to use lenient loading.
 
 ### Current
 - Drag-and-drop shows errors for non-image files (planned fix)
-- No mouse wheel zoom in preview window (planned enhancement)
 - No keyboard shortcuts for main window (planned enhancement)
 - No undo/redo functionality
 
@@ -278,6 +243,10 @@ Update `on_drop_files()` in `ui/app_window.py` to use lenient loading.
 - ✅ Comprehensive test suite
 
 ### Version 0.2.0 (Planned)
-- 📋 Mouse wheel zoom in preview window
 - 📋 Graceful non-image file handling
 - 📋 Keyboard shortcuts for main window
+
+### Version 0.1.1 (Current - Minor Updates)
+- ✅ Ctrl + Mouse wheel zoom in preview window
+- ✅ Smooth zoom from fitted/current view (not from original size)
+- ✅ Tooltips on all buttons

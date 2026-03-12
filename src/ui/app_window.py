@@ -26,6 +26,7 @@ CANVAS_BG_COLOR = "gray20"
 PREVIEW_TITLE_TEMPLATE = "Image Preview  - {index}/{total}"
 
 class ImageToPdfApp(TkinterDnD.Tk):
+    """Main application window for the Image to PDF converter."""
     THUMB_MAX = 94  # Max size for thumbnails in the list
     def __init__(self):
         super().__init__() 
@@ -349,6 +350,7 @@ class PreviewDialog(tb.Toplevel):
 
         self.original = pil_image.copy()  # Keep original for zooming
         self.zoom = 1.0
+        self.current_size = self.original.size
         self._preview_images = []  # To keep references to PhotoImage objects
 
         frame = tb.Frame(self)
@@ -363,7 +365,7 @@ class PreviewDialog(tb.Toplevel):
         vbar.config(command=self.canvas.yview)
         hbar.config(command=self.canvas.xview)
         self.label = tb.Label(self, 
-                    text="A - full size, F - fit to window, +/- - zoom", anchor="center")
+                    text="A - full size, F - fit to window, +/- - zoom, Ctrl+Wheel - zoom", anchor="center")
         self.label.pack(side=BOTTOM, fill=X)
 
         # Place the scrollbars and canvas in the frame
@@ -371,12 +373,17 @@ class PreviewDialog(tb.Toplevel):
         hbar.pack(side=BOTTOM, fill=X)
         self.canvas.pack(fill=BOTH, expand=True)
 
+        # --- Event bindings section
         # Event bindings for keyboard controls
         self.bind('<Escape>', lambda e: self.destroy())
         self.bind('<f>', lambda e: self.fit_to_window())
         self.bind('<a>', lambda e: self.actual_size())
         self.bind('<plus>', lambda e: self.zoom_img(factor=1.1))
         self.bind('<minus>', lambda e: self.zoom_img(factor=0.9))
+        # Event bindings for mouse controls
+        self.canvas.bind('<Control-MouseWheel>', self._on_mousewheel) # Windows/MacOs
+        self.canvas.bind('<Control-Button-4>', self._on_mousewheel) # Linux scroll up
+        self.canvas.bind('<Control-Button-5>', self._on_mousewheel) # Linux scroll down
 
         self.fit_to_window()
     #-----------------------Image display and manipulation------------------------------------------------------
@@ -388,16 +395,21 @@ class PreviewDialog(tb.Toplevel):
         
         img_copy = self.original.copy()
         img_copy.thumbnail((width, height), Image.Resampling.LANCZOS)
+        self.current_size = img_copy.size # set current image size to the one shown in the preview
+        self.zoom = 1.0 # reset zoom
         self._update_canvas(img_copy)
     
     def actual_size(self):
         """A handler to display the image at its actual size (100% zoom)."""
+        self.current_size = self.original.size # update current size
+        self.zoom = 1.0 # reset zoom
         self._update_canvas(self.original.copy())
 
     def zoom_img(self, factor: float):
         """ A handler for zooming the image in or out by the given factor."""
         self.zoom *= factor
-        width, height = self.original.size
+        # width, height = self.original.size
+        width, height = self.current_size
         new_size = (int(width * self.zoom), int(height * self.zoom))
         img = self.original.resize(new_size, Image.Resampling.LANCZOS)
         self._update_canvas(img)
@@ -411,11 +423,19 @@ class PreviewDialog(tb.Toplevel):
         if cw <= 1 or ch <= 1:  # Initial size might be 1x1, use image size in that case
             self.after(100, lambda: self._update_canvas(pil_image))  # Try again after a short delay
             return
-        
+
         self.canvas.delete("all")
         self.canvas.create_image(cw//2, ch//2, image=tk_img, anchor="center")
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
         self._preview_images.append(tk_img)  # Keep reference to prevent GC
+
+    def _on_mousewheel(self, event):
+        """Handle mouse wheel zoom"""
+        if event.state & 0x0004:
+            if event.num == 4 or event.delta > 0:
+                self.zoom_img(1.1)
+            elif event.num == 5 or event.delta < 0:
+                self.zoom_img(0.9)
 
 if __name__ == "__main__":
     app = ImageToPdfApp()
