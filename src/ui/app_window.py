@@ -362,7 +362,7 @@ class PreviewDialog(tb.Toplevel):
         self.original = pil_image.copy()  # Keep original for zooming
         self.zoom = 1.0
         self.current_size = self.original.size
-        self._preview_images = []  # To keep references to PhotoImage objects
+        self._preview_images = []  # Holds current image reference
 
         frame = tb.Frame(self)
         frame.pack(fill=BOTH, expand=True)
@@ -438,7 +438,7 @@ class PreviewDialog(tb.Toplevel):
         self.canvas.delete("all")
         self.canvas.create_image(cw//2, ch//2, image=tk_img, anchor="center")
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
-        self._preview_images.append(tk_img)  # Keep reference to prevent GC
+        self._preview_images = [tk_img]  # Having only one image in preview to prevent memory leaks
 
     def _on_mousewheel(self, event):
         """Handle mouse wheel zoom"""
