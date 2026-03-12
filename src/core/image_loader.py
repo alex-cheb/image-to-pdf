@@ -12,6 +12,28 @@ def _is_valid_image(path: Path) -> bool:
     """Returns true in case the file format is supported"""
     return path.suffix.lower() in SUPPORTED_EXTENSIONS
 
+def add_images_lenient(paths: Iterable[Path]) -> tuple[List[Image.Image], List[Path]]:
+    """Returns a tuple containing a list of images and a list of skipped paths items"""
+    images = []
+    skipped = []
+
+    for raw_path in paths:
+        path = Path(raw_path)
+        if not path.is_file() or not _is_valid_image(path):
+            logger.warning(f"'{path}' could not be identified as an image.")
+            skipped.append(path)
+            continue
+        try:
+            img = Image.open(path)
+            img = ImageOps.exif_transpose(img)  # Handle EXIF orientation
+            if img.mode != 'RGB':
+                img = img.convert('RGB') # Convert to RGB to work with PDF
+            images.append(img)
+        except UnidentifiedImageError as e:
+            logger.warning(f"Skipping corrupted file. Error {e}")
+            skipped.append(path)
+    return images, skipped
+
 def add_images(paths: Iterable[Path]) -> List[Image.Image]:
     """
     Validate a collection of file paths and load them as Pillow Image objects.

@@ -14,7 +14,7 @@ from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from PIL import Image, ImageTk, UnidentifiedImageError
 
-from core.image_loader import add_images
+from core.image_loader import add_images, add_images_lenient
 from core.pdf_builder import build_pdf
 
 # Constants
@@ -169,7 +169,8 @@ class ImageToPdfApp(TkinterDnD.Tk):
         if not file_paths:
             return
         try:
-            new_imgs = add_images(file_paths)
+            new_imgs, _ = add_images_lenient(file_paths) 
+            # TODO: think if the skipped are necessary for something except for logging
             self._add_images_to_list(file_paths, new_imgs)
         except UnidentifiedImageError as e:
             messagebox.showerror("Error", f"Corrupt image. One of the images cannot be opened: {e}")
