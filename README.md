@@ -4,13 +4,14 @@ A simple, user-friendly desktop application for converting multiple images into 
 
 ## Features
 
-- **Drag-and-Drop Support**: Drag image files directly onto the application window
-- **Add Images**: Select multiple images through a file dialog
+- **Drag-and-Drop Support**: Drag image files directly onto the application window (gracefully skips non-image files)
+- **Add Images**: Select multiple images through a file dialog (`Ctrl+O`)
 - **Visual Preview**: View thumbnails of loaded images in an organized list with full-size preview
-- **Image Management**: Delete, reorder (move up/down), and rotate images
-- **Batch Conversion**: Convert all loaded images into a single PDF file
+- **Image Management**: Delete (`Delete`), reorder (`Ctrl+Up/Down`), and rotate (`Ctrl+R`) images
+- **Batch Conversion**: Convert all loaded images into a single PDF file (`Ctrl+S`)
 - **EXIF Orientation Support**: Automatically handles image rotation based on EXIF data
 - **Multiple Format Support**: Works with JPG, JPEG, PNG, BMP, GIF, and TIFF files
+- **Keyboard Shortcuts**: Full keyboard navigation for all operations
 - **Logging**: Automatic logging to `logs/app.log` with rotation
 
 ## Requirements
@@ -58,15 +59,26 @@ pdf-maker
 ### How to Use:
 
 1. **Add Images**: 
-   - Click the "Add Images" button to select image files, OR
+   - Click the "Add Images" button (`Ctrl+O`) to select image files, OR
    - Drag and drop image files directly onto the window
-2. **Preview**: Double-click any image to view it full-size with zoom controls
+2. **Preview**: Double-click any image to view it full-size with zoom controls (`Ctrl+MouseWheel`)
 3. **Manage Images** (optional):
-   - **Rotate**: Select an image and click "Rotate" to rotate 90° clockwise
-   - **Reorder**: Use "Move Up ↑" or "Move Down ↓" buttons to change the order
-   - **Delete**: Remove selected image from the list
-   - **Clear List**: Remove all loaded images to start fresh
-4. **Create PDF**: Click "Create PDF" and choose where to save your output file
+   - **Rotate**: Select an image and click "Rotate" (`Ctrl+R`) to rotate 90° clockwise
+   - **Reorder**: Use "Move Up ↑" (`Ctrl+Up`) or "Move Down ↓" (`Ctrl+Down`) buttons to change the order
+   - **Delete**: Remove selected image (`Delete`) from the list
+   - **Clear List**: Remove all loaded images (`Ctrl+C`) to start fresh
+4. **Create PDF**: Click "Create PDF" (`Ctrl+S`) and choose where to save your output file
+5. **Quit**: Press `Ctrl+Q` to exit the application
+
+### Keyboard Shortcuts:
+
+- `Ctrl+O`: Add Images
+- `Ctrl+S`: Create PDF
+- `Ctrl+C`: Clear List
+- `Delete`: Remove selected image
+- `Ctrl+Up/Down`: Move image up/down
+- `Ctrl+R`: Rotate selected image
+- `Ctrl+Q`: Quit application
 
 ## Project Structure
 
@@ -174,9 +186,8 @@ See [DESIGN.md](DESIGN.md) for:
 
 ### Known Issues
 
-- Drag-and-drop shows errors for non-image files (planned fix in v0.2.0)
-- UI text partially in Ukrainian
-- No keyboard shortcuts for main window
+- No undo/redo functionality
+- No batch processing capabilities
 
 ## Dependencies
 

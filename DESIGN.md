@@ -37,22 +37,37 @@ src/
 - Automatic RGB conversion for PDF compatibility
 - Thumbnail generation for list display
 
-### PDF Generation
-**Status**: Complete
-
-- Generate single or multi-page PDFs from loaded images
-- Preserve image order and dimensions
-- 150 DPI resolution metadata
-- Error handling for empty image lists
-
 ### Image Management
 **Status**: Complete
 
-- **Add Images**: File dialog to select multiple images
-- **Delete Image**: Remove selected image from list
-- **Reorder Images**: Move images up/down in the list
-- **Rotate Image**: Rotate selected image 90° clockwise
-- **Clear List**: Remove all images at once
+- **Add Images**: File dialog to select multiple images (`Ctrl+O`)
+- **Delete Image**: Remove selected image from list (`Delete`)
+- **Reorder Images**: Move images up/down in the list (`Ctrl+Up/Down`)
+- **Rotate Image**: Rotate selected image 90° clockwise (`Ctrl+R`)
+- **Clear List**: Remove all images at once (`Ctrl+C`)
+
+### User Interface
+**Status**: Complete
+
+- **Main Window**: Clean, intuitive layout with toolbar and image list
+- **Keyboard Shortcuts**: Full keyboard navigation support
+  - `Ctrl+O`: Add Images
+  - `Ctrl+S`: Create PDF  
+  - `Ctrl+C`: Clear List
+  - `Delete`: Remove selected image
+  - `Ctrl+Up/Down`: Move image up/down
+  - `Ctrl+R`: Rotate selected image
+  - `Ctrl+Q`: Quit application
+- **Tooltips**: Helpful hover text on all buttons
+- **Status Bar**: Shows current image count and operation feedback
+
+### PDF Generation
+**Status**: Complete
+
+- Generate single or multi-page PDFs from loaded images (`Ctrl+S`)
+- Preserve image order and dimensions
+- 150 DPI resolution metadata
+- Error handling for empty image lists
 
 ### Image Preview
 **Status**: Complete
@@ -64,7 +79,6 @@ src/
 - Actual size view (A key)
 - Scrollable canvas for large images
 - Close with Escape key
-- Tooltips on all buttons for better UX
 
 ### Drag-and-Drop Support
 **Status**: Complete
@@ -75,88 +89,20 @@ src/
 - Parses Windows-style paths (with braces) and Unix-style paths
 - Uses `tkinterdnd2` library
 - Base class: `TkinterDnD.Tk` with manual ttkbootstrap theming
-
-### Logging Infrastructure
-**Status**: Complete
-
-- Loguru-based logging to `logs/app.log`
-- 1 MB log rotation
-- Automatic log directory creation
-- Configured in `main.py` before app launch
+- **Graceful non-image file handling**: Silently skips non-image files, logs warnings
 
 ---
 
 ## Planned Features 📋
 
-### Graceful Non-Image File Handling
-**Priority**: Medium  
-**Effort**: 2-3 hours
-
-**Current Behavior**:
-- Dropping non-image files via drag-and-drop shows an error dialog
-- No files are added to the list (all-or-nothing approach)
-
-**Desired Behavior**:
-- **Single non-image file**: Silently ignored, no error dialog shown
-- **Mixed files (images + non-images)**: 
-  - Valid images are added to the list
-  - Non-image files are silently skipped
-  - Status bar shows: "X image(s) loaded (Y skipped)"
-- **All non-image files**: No files added, status bar shows: "No valid images found"
-
-**Implementation Plan**:
-
-Add new function to `core/image_loader.py`:
-```python
-def add_images_lenient(paths: Iterable[Path]) -> tuple[List[Image.Image], List[Path]]:
-    """
-    Load images from paths, skipping invalid files instead of raising exceptions.
-    
-    Returns:
-        tuple: (loaded_images, skipped_paths)
-    """
-    images = []
-    skipped = []
-    
-    for raw_path in paths:
-        path = Path(raw_path)
-        if not path.is_file() or not _is_valid_image(path):
-            skipped.append(path)
-            continue
-        
-        try:
-            img = Image.open(path)
-            img = ImageOps.exif_transpose(img)
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
-            images.append(img)
-        except UnidentifiedImageError as e:
-            logger.warning(f"Skipping corrupted file: {path}")
-            skipped.append(path)
-    
-    return images, skipped
-```
-
-Update `on_drop_files()` in `ui/app_window.py` to use lenient loading.
-
-**Testing**:
-- Drop single non-image file → no error, no files added
-- Drop mix of images and non-images → only images added, status shows count
-- Drop only non-images → status shows "No valid images found"
-
----
-
-### Keyboard Shortcuts for Main Window
+### Advanced Features (Future Versions)
 **Priority**: Low  
-**Effort**: 1-2 hours
+**Effort**: Variable
 
-**Desired Shortcuts**:
-- `Ctrl+O`: Open file dialog (Add Images)
-- `Ctrl+S`: Save as PDF (Create PDF)
-- `Delete`: Remove selected image
-- `Ctrl+Up/Down`: Move image up/down
-- `Ctrl+R`: Rotate selected image
-- `Ctrl+Q`: Quit application
+- **Undo/Redo functionality**: Allow users to undo/redo operations
+- **Batch image processing**: Apply transformations to multiple images at once
+- **Custom page sizes**: Allow users to specify PDF page dimensions
+- **Image compression settings**: Control output file size vs quality
 
 ---
 
@@ -183,10 +129,13 @@ Update `on_drop_files()` in `ui/app_window.py` to use lenient loading.
 - Catches edge cases that manual tests miss
 - Validates properties across wide input ranges
 
-### Why Ctrl+MouseWheel for Zoom?
-- Prevents accidental zooming while scrolling through content
-- Standard convention in many image viewers and browsers
-- Leaves plain scroll wheel available for future scrolling features
+### Logging Infrastructure
+**Status**: Complete
+
+- Loguru-based logging to `logs/app.log`
+- 1 MB log rotation
+- Automatic log directory creation
+- Configured in `main.py` before app launch
 
 ---
 
@@ -212,9 +161,8 @@ Update `on_drop_files()` in `ui/app_window.py` to use lenient loading.
 - ~~No logging~~ → Implemented
 
 ### Current
-- Drag-and-drop shows errors for non-image files (planned fix)
-- No keyboard shortcuts for main window (planned enhancement)
 - No undo/redo functionality
+- No batch processing capabilities
 
 ---
 
@@ -242,11 +190,13 @@ Update `on_drop_files()` in `ui/app_window.py` to use lenient loading.
 - ✅ Logging infrastructure
 - ✅ Comprehensive test suite
 
-### Version 0.2.0 (Planned)
-- 📋 Graceful non-image file handling
-- 📋 Keyboard shortcuts for main window
+### Why Ctrl+MouseWheel for Zoom?
+- Prevents accidental zooming while scrolling through content
+- Standard convention in many image viewers and browsers
+- Leaves plain scroll wheel available for future scrolling features
 
-### Version 0.1.1 (Current - Minor Updates)
-- ✅ Ctrl + Mouse wheel zoom in preview window
-- ✅ Smooth zoom from fitted/current view (not from original size)
-- ✅ Tooltips on all buttons
+### Why Standard Keyboard Shortcuts?
+- `Ctrl+O` (Open), `Ctrl+S` (Save) follow universal conventions
+- `Ctrl+C` for Clear is intuitive (though different from Copy)
+- Arrow keys with Ctrl for reordering is common in list applications
+- `Delete` key for removal is standard across most applications

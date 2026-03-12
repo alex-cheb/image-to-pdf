@@ -124,6 +124,16 @@ class ImageToPdfApp(TkinterDnD.Tk):
         self.status = tb.Label(self, text="No images loaded.", anchor="w")
         self.status.pack(fill=X, side=BOTTOM, padx=5, pady=5)
 
+        # --- Binding shortcuts ---
+        self.bind('<Control-o>', lambda e: self.on_add_images())
+        self.bind('<Control-s>', lambda e: self.on_create_pdf())
+        self.bind('<Control-c>', lambda e: self.on_clear_list())
+        self.bind('<Delete>', lambda e: self.on_delete())
+        self.bind('<Control-Up>', lambda e: self.on_move_up())
+        self.bind('<Control-Down>', lambda e: self.on_move_down())
+        self.bind('<Control-r>', lambda e: self.on_rotate())
+        self.bind('<Control-q>', lambda e: self.destroy())
+
    
     #-----------------------Event Handlers------------------------------------------------------
     def on_add_images(self):
