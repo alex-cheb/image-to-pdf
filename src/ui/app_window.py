@@ -9,6 +9,7 @@ import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
+from ttkbootstrap.tooltip import ToolTip
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from PIL import Image, ImageTk, UnidentifiedImageError
@@ -16,6 +17,7 @@ from PIL import Image, ImageTk, UnidentifiedImageError
 from core.image_loader import add_images
 from core.pdf_builder import build_pdf
 
+# Constants
 TITLE = "Image to PDF Converter"
 THEME = "flatly"  # or "darkly", "cyborg", etc. (see https://ttkbootstrap.readthedocs.io/en/latest/themes/index.html)
 DEFAULT_SIZE = (600, 800)
@@ -42,10 +44,30 @@ class ImageToPdfApp(TkinterDnD.Tk):
         # --- Top toolbar: file-level actions ---
         toolbar = tb.Frame(self)
         toolbar.pack(side=TOP, fill=X)
-
-        tb.Button(toolbar, text="Add Images", command=self.on_add_images).pack(side=LEFT, padx=10, pady=5)
-        tb.Button(toolbar, text="Clear List", command=self.on_clear_list).pack(side=LEFT, padx=10, pady=5)
-        tb.Button(toolbar, text="Create PDF", command=self.on_create_pdf).pack(side=LEFT, padx=10, pady=5)
+        
+        # General buttons
+        add_button = tb.Button(
+            toolbar, 
+            text="Add Images", 
+            command=self.on_add_images
+            )
+        add_button.pack(side=LEFT, padx=10, pady=5)
+        clear_button = tb.Button(
+            toolbar, 
+            text="Clear List", 
+            command=self.on_clear_list
+            )
+        clear_button.pack(side=LEFT, padx=10, pady=5)
+        create_button = tb.Button(
+            toolbar,
+            text="Create PDF", 
+            command=self.on_create_pdf
+            )
+        create_button.pack(side=LEFT, padx=10, pady=5)
+        # Button tooltips
+        ToolTip(add_button, text = "Select images for pdf pages")
+        ToolTip(clear_button, text = "Remove all images from the list")
+        ToolTip(create_button, text = "Generate PDF")
 
         
         # --- Main area: tree + side panel ---
@@ -56,11 +78,22 @@ class ImageToPdfApp(TkinterDnD.Tk):
         side_panel = tb.Frame(main_area)
         side_panel.pack(side=RIGHT, fill=Y, padx=(5, 0))
 
-        tb.Button(side_panel, text="↑", width=3, command=self.on_move_up).pack(pady=(10, 2))
-        tb.Button(side_panel, text="↓", width=3, command=self.on_move_down).pack(pady=(10, 2))
-        tb.Button(side_panel, text="↻", width=3, command=self.on_rotate).pack(pady=(10, 0))  
-        tb.Button(side_panel, text="X", width=3, command=self.on_delete).pack(pady=(10, 0))  
-        tb.Button(side_panel, text="🔍", width=3, command=self.on_preview).pack(pady=(10, 0))  
+        mv_up_btn = tb.Button(side_panel, text="↑", width=3, command=self.on_move_up)
+        mv_up_btn.pack(pady=(10, 2))
+        mv_dwn_btn = tb.Button(side_panel, text="↓", width=3, command=self.on_move_down)
+        mv_dwn_btn.pack(pady=(10, 2))
+        rt_btn = tb.Button(side_panel, text="↻", width=3, command=self.on_rotate)
+        rt_btn.pack(pady=(10, 0))  
+        rm_btn = tb.Button(side_panel, text="X", width=3, command=self.on_delete)
+        rm_btn.pack(pady=(10, 0))  
+        prv_btn = tb.Button(side_panel, text="🔍", width=3, command=self.on_preview)
+        prv_btn.pack(pady=(10, 0))
+        # Side button tooltips
+        ToolTip(mv_up_btn, text = "Move page up")
+        ToolTip(mv_dwn_btn, text = "Move page down")
+        ToolTip(rt_btn, text = "Rotate page")
+        ToolTip(rm_btn, text = "Remove page")
+        ToolTip(prv_btn, text = "Preview page")
 
         # --- Treeview ---
         # style = ttk.Style()
