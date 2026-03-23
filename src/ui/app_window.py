@@ -14,9 +14,14 @@ from ttkbootstrap.tooltip import ToolTip
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from PIL import Image, ImageTk, UnidentifiedImageError
-
+# adding async thumbnails
+import concurrent.futures
+from threading import Lock
+import queue
+# project imports
 from core.image_loader import add_images, add_images_lenient
 from core.pdf_builder import build_pdf
+
 
 # Constants
 TITLE = "Image to PDF Converter"
@@ -25,6 +30,8 @@ DEFAULT_SIZE = (600, 800)
 PREVIEW_DEFAULT_SIZE = (640, 480)
 CANVAS_BG_COLOR = "gray20"
 PREVIEW_TITLE_TEMPLATE = "Image Preview  - {index}/{total}"
+THUMBNAIL_WORKERS = 4
+THUMBNAIL_QUEUE_SIZE = 100
 
 class ImageToPdfApp(TkinterDnD.Tk):
     """Main application window for the Image to PDF converter."""
@@ -34,6 +41,15 @@ class ImageToPdfApp(TkinterDnD.Tk):
         style = tb.Style(theme=THEME)
         self.title(TITLE)
         self.geometry(f"{DEFAULT_SIZE[0]}x{DEFAULT_SIZE[1]}")
+
+        # async thumbnails
+        self._thumbnail_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers = THUMBNAIL_WORKERS,
+            thread_name_pref = 'thumbnail'
+        )
+        self._thumbnail_lock = Lock()
+        self._pending_thumbs = {} # row_id => Future
+        self._shutdown_request = False
 
         self.loaded_images: List[Image.Image] = []
         self._thumb_refs: dict[str, ImageTk.PhotoImage] = {}
@@ -76,7 +92,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
         main_area = tb.Frame(self)
         main_area.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-               # --- Right panel: selection-level actions ---
+        # --- Right panel: selection-level actions ---
         side_panel = tb.Frame(main_area)
         side_panel.pack(side=RIGHT, fill=Y, padx=(5, 0))
 
@@ -448,7 +464,6 @@ class PreviewDialog(tb.Toplevel):
         if current_time - self._last_zoom_time < self._zoom_debounce_ms:
             return
         self._last_zoom_time = current_time
-
 
         self.zoom *= factor
         zoom_key = round(self.zoom, 2)
