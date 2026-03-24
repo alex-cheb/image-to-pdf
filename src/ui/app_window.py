@@ -367,6 +367,47 @@ class ImageToPdfApp(TkinterDnD.Tk):
             self._thumb_refs[row_id] = tk_thumb
 
         self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
+    
+    def _async_thumbnail_generation(self, pil_img: Image.Image, row_id: str, path: str):
+        """Generate thumbnail in the background thread"""
+        try:
+            # Stop performance in case app is closed
+            if self._shutdown_request:
+                return
+            
+            thumb = pil_img.copy()
+            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
+
+            # Schedule UI update in the main thread
+            self._after_idle(self._update_thumb_ui, thumb, row_id, path)
+        
+        except Exception as e:
+            logger.error(f'Thumbnail generation failed for: {path}: {e}')
+            self._after_idle(self._handle_thumb_error, row_id, path)
+
+    def _update_thumb_ui(self, thumb: Image.Image, row_id, path):
+        """Update the UI with generated thumbnails in main thread"""
+        try:
+            with self._thumbnail_lock:
+                # Verify the row exists
+                if not self.imgs_tree.exists(row_id):
+                    return
+                
+                tk_thumb = ImageTk.PhotoImage(thumb)
+                self.imgs_tree.set(row_id, "Image", tk_thumb)
+                self._thumb_refs[row_id] = tk_thumb
+
+                # Remove from pending
+                self._pending_thumbs.pop(row_id, None)
+        except Exception as e:
+            logger.error(f'UI update failed for: {row_id}, {path}')
+
+    def _handle_thumb_error(self, row_id, path):
+        """Handles error in thumb generation"""
+        with self._thumbnail_lock:
+            self._pending_thumbs.pop(row_id, None)
+        logger.warning(f'Using a placeholder thumb for: {row_id}, {path}')
+
 
 
 class PreviewDialog(tb.Toplevel):
