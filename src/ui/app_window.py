@@ -4,6 +4,7 @@
 
 from pathlib import Path
 from typing import List
+import time
 
 import tkinter.ttk as ttk
 from tkinter import filedialog, messagebox
@@ -11,11 +12,17 @@ import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from ttkbootstrap.tooltip import ToolTip
 from tkinterdnd2 import DND_FILES, TkinterDnD
+from loguru import logger
 
 from PIL import Image, ImageTk, UnidentifiedImageError
-
+# adding async thumbnails
+import concurrent.futures
+from threading import Lock
+import queue
+# project imports
 from core.image_loader import add_images, add_images_lenient
 from core.pdf_builder import build_pdf
+
 
 # Constants
 TITLE = "Image to PDF Converter"
@@ -24,6 +31,8 @@ DEFAULT_SIZE = (600, 800)
 PREVIEW_DEFAULT_SIZE = (640, 480)
 CANVAS_BG_COLOR = "gray20"
 PREVIEW_TITLE_TEMPLATE = "Image Preview  - {index}/{total}"
+THUMBNAIL_WORKERS = 4
+THUMBNAIL_QUEUE_SIZE = 100
 
 class ImageToPdfApp(TkinterDnD.Tk):
     """Main application window for the Image to PDF converter."""
@@ -33,6 +42,15 @@ class ImageToPdfApp(TkinterDnD.Tk):
         style = tb.Style(theme=THEME)
         self.title(TITLE)
         self.geometry(f"{DEFAULT_SIZE[0]}x{DEFAULT_SIZE[1]}")
+
+        # async thumbnails
+        self._thumbnail_executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers = THUMBNAIL_WORKERS,
+            thread_name_prefix = 'thumbnail'
+        )
+        self._thumbnail_lock = Lock()
+        self._pending_thumbs = {} # row_id => Future
+        self._shutdown_request = False
 
         self.loaded_images: List[Image.Image] = []
         self._thumb_refs: dict[str, ImageTk.PhotoImage] = {}
@@ -75,7 +93,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
         main_area = tb.Frame(self)
         main_area.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
-               # --- Right panel: selection-level actions ---
+        # --- Right panel: selection-level actions ---
         side_panel = tb.Frame(main_area)
         side_panel.pack(side=RIGHT, fill=Y, padx=(5, 0))
 
@@ -133,6 +151,22 @@ class ImageToPdfApp(TkinterDnD.Tk):
         self.bind('<Control-Down>', lambda e: self.on_move_down())
         self.bind('<Control-r>', lambda e: self.on_rotate())
         self.bind('<Control-q>', lambda e: self.destroy())
+
+
+    def destroy(self):
+        """Clean shutdown of background threads"""
+        self._shutdown_request = True
+
+        # Cancel pending thumbnails
+        with self._thumbnail_lock:
+            for future in self._pending_thumbs.values():
+                future.cancel()
+            self._pending_thumbs.clear()
+
+        self._thumbnail_executor.shutdown(wait=False, cancel_futures=True)
+
+        super().destroy()
+
 
    
     #-----------------------Event Handlers------------------------------------------------------
@@ -336,20 +370,64 @@ class ImageToPdfApp(TkinterDnD.Tk):
         """Shared logic for adding images to the list (D-n-D and add)"""
         self.loaded_images.extend(new_imgs)
         for path_str, pil_img in zip (file_paths, new_imgs):
-            thumb = pil_img.copy()
-            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
-            tk_thumb = ImageTk.PhotoImage(thumb)
-
             row_id = self.imgs_tree.insert(
                 "",
                 "end",
                 text="",
                 values=(Path(path_str).name,),
-                image=tk_thumb
+                # Image parameter is set asynchronously
             )
-            self._thumb_refs[row_id] = tk_thumb
-
+            with self._thumbnail_lock:
+                future = self._thumbnail_executor.submit(
+                    self._generate_thumbnail_async,
+                    pil_img,
+                    row_id,
+                    path_str
+                )
+                self._pending_thumbs[row_id] = future
+            
         self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
+    
+    def _generate_thumbnail_async(self, pil_img: Image.Image, row_id: str, path: str):
+        """Generate thumbnail in the background thread"""
+        try:
+            # Stop performance in case app is closed
+            if self._shutdown_request:
+                return
+            
+            thumb = pil_img.copy()
+            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
+
+            # Schedule UI update in the main thread
+            self.after_idle(self._update_thumb_ui, thumb, row_id, path)
+        
+        except Exception as e:
+            logger.error(f'Thumbnail generation failed for: {path}: {e}')
+            self.after_idle(self._handle_thumb_error, row_id, path)
+
+    def _update_thumb_ui(self, thumb: Image.Image, row_id, path):
+        """Update the UI with generated thumbnails in main thread"""
+        try:
+            with self._thumbnail_lock:
+                # Verify the row exists
+                if not self.imgs_tree.exists(row_id):
+                    return
+                
+                tk_thumb = ImageTk.PhotoImage(thumb)
+                self.imgs_tree.item(row_id, image=tk_thumb)
+                self._thumb_refs[row_id] = tk_thumb
+
+                # Remove from pending
+                self._pending_thumbs.pop(row_id, None)
+        except Exception as e:
+            logger.error(f'UI update failed for: {row_id}, {path}')
+
+    def _handle_thumb_error(self, row_id, path):
+        """Handles error in thumb generation"""
+        with self._thumbnail_lock:
+            self._pending_thumbs.pop(row_id, None)
+        logger.warning(f'Using a placeholder thumb for: {row_id}, {path}')
+
 
 
 class PreviewDialog(tb.Toplevel):
@@ -362,7 +440,15 @@ class PreviewDialog(tb.Toplevel):
         self.original = pil_image.copy()  # Keep original for zooming
         self.zoom = 1.0
         self.current_size = self.original.size
-        self._preview_images = []  # To keep references to PhotoImage objects
+        self._preview_images = []  # Holds current image reference
+
+        # --- Zoom caching values
+        self._zoom_cache = {} # zoom level: PIL Image
+        self._max_cache_size = 10 # Limit the cache size
+        self._fast_zoom_threshold = 2.0 # Zoom after this threshold is simplified
+        self._last_zoom_time = 0
+        self._zoom_debounce_ms = 50 # ignore zoom operation if it is within the lower time period
+        # ---
 
         frame = tb.Frame(self)
         frame.pack(fill=BOTH, expand=True)
@@ -404,11 +490,27 @@ class PreviewDialog(tb.Toplevel):
         if width <= 1 or height <= 1:  # Initial size might be 1x1, use default in that case
             width, height = PREVIEW_DEFAULT_SIZE
         
-        img_copy = self.original.copy()
-        img_copy.thumbnail((width, height), Image.Resampling.LANCZOS)
-        self.current_size = img_copy.size # set current image size to the one shown in the preview
-        self.zoom = 1.0 # reset zoom
-        self._update_canvas(img_copy)
+        # Calculate scale factor
+        orig_w, orig_h = self.original.size
+        scale = min(width/orig_w, height/orig_h) # current zoom level
+
+        # Zoom level and current size update
+        self.zoom = scale
+        self.current_size = (int(orig_w*scale), int(orig_h*scale))
+
+        # Create cache key
+        zoom_key = round(self.zoom, 2)
+
+        # Check the cache
+        if zoom_key in self._zoom_cache:
+            cached_img = self._zoom_cache[zoom_key]
+            self._update_canvas(cached_img)
+            return
+        # Not cached, calculate value
+        resized = self.original.resize(self.current_size, Image.Resampling.LANCZOS)
+        self._zoom_cache[zoom_key] = resized
+
+        self._update_canvas(resized)
     
     def actual_size(self):
         """A handler to display the image at its actual size (100% zoom)."""
@@ -418,12 +520,50 @@ class PreviewDialog(tb.Toplevel):
 
     def zoom_img(self, factor: float):
         """ A handler for zooming the image in or out by the given factor."""
+        # Restrict zoom operations per period quantity
+        current_time = time.time() * 1000
+        if current_time - self._last_zoom_time < self._zoom_debounce_ms:
+            return
+        self._last_zoom_time = current_time
+
         self.zoom *= factor
-        # width, height = self.original.size
-        width, height = self.current_size
-        new_size = (int(width * self.zoom), int(height * self.zoom))
-        img = self.original.resize(new_size, Image.Resampling.LANCZOS)
-        self._update_canvas(img)
+        zoom_key = round(self.zoom, 2)
+
+        # Check the cache
+        if zoom_key in self._zoom_cache:
+            cached_img = self._zoom_cache[zoom_key]
+            self._update_canvas(cached_img)
+            return
+
+        # New size calculation
+        original_w, original_h = self.original.size
+        # A slightly more condensed version
+        # new_size = tuple(int(dim * self.zoom) for dim in self.original.size)
+        new_size = (int(original_w * self.zoom), int(original_h * self.zoom))
+
+        # Use faster zoom mechanism for bigger zoom values
+        if self.zoom > self._fast_zoom_threshold:
+            resampling = Image.Resampling.BILINEAR
+        else:
+            resampling = Image.Resampling.LANCZOS
+
+        resized_img = self.original.resize(new_size, resampling)
+
+        if len(self._zoom_cache) >= self._max_cache_size:
+            # remove the oldest cached entry
+            oldest_entry = next(iter(self._zoom_cache))
+            del(self._zoom_cache[oldest_entry])
+        self._zoom_cache[zoom_key]  = resized_img
+
+        self._update_canvas(resized_img)
+
+    def _clear_zoom_cache(self):
+        """ Free memory by clearing cache """
+        try:
+            self._zoom_cache.clear()
+        except AttributeError:
+            # Can be ignored since the cache is not yet initialized
+            pass
 
     def _update_canvas(self, pil_image: Image.Image):
         """ A helper method to update the canvas with the given PIL image."""
@@ -438,7 +578,7 @@ class PreviewDialog(tb.Toplevel):
         self.canvas.delete("all")
         self.canvas.create_image(cw//2, ch//2, image=tk_img, anchor="center")
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
-        self._preview_images.append(tk_img)  # Keep reference to prevent GC
+        self._preview_images = [tk_img]  # Having only one image in preview to prevent memory leaks
 
     def _on_mousewheel(self, event):
         """Handle mouse wheel zoom"""

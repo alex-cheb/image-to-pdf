@@ -31,11 +31,13 @@ src/
 ### Core Image Operations
 **Status**: Complete
 
-- Load multiple images via file dialog
+- Load multiple images via file dialog (`Ctrl+O`)
 - Support for JPG, JPEG, PNG, BMP, GIF, and TIFF formats
 - Automatic EXIF orientation handling
 - Automatic RGB conversion for PDF compatibility
 - Thumbnail generation for list display
+- **Security validation**: Path traversal prevention and file safety checks
+- **File limits**: 50MB maximum file size, 15k×15k maximum dimensions
 
 ### Image Management
 **Status**: Complete
@@ -79,6 +81,7 @@ src/
 - Actual size view (A key)
 - Scrollable canvas for large images
 - Close with Escape key
+- **Memory leak prevention**: Optimized image reference management
 
 ### Drag-and-Drop Support
 **Status**: Complete
@@ -90,6 +93,7 @@ src/
 - Uses `tkinterdnd2` library
 - Base class: `TkinterDnD.Tk` with manual ttkbootstrap theming
 - **Graceful non-image file handling**: Silently skips non-image files, logs warnings
+- **Security hardening**: Path validation and sanitization for all dropped files
 
 ---
 
@@ -164,6 +168,11 @@ src/
 - No undo/redo functionality
 - No batch processing capabilities
 
+### Resolved in v0.3.0 ✅
+- ~~Memory leaks in preview window~~ → Fixed with proper image reference management
+- ~~Security vulnerabilities in file handling~~ → Fixed with comprehensive path validation
+- ~~No file size limits~~ → Fixed with 50MB limit and dimension validation
+
 ---
 
 ## Dependencies
@@ -200,3 +209,9 @@ src/
 - `Ctrl+C` for Clear is intuitive (though different from Copy)
 - Arrow keys with Ctrl for reordering is common in list applications
 - `Delete` key for removal is standard across most applications
+
+### Why Comprehensive Input Validation?
+- **Security First**: Prevents path traversal attacks and unauthorized file access
+- **Performance Protection**: File size limits prevent memory exhaustion and crashes
+- **User Experience**: Clear error messages help users understand file requirements
+- **Reliability**: Comprehensive validation prevents unexpected crashes from malformed files

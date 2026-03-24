@@ -15,7 +15,8 @@ dependencies = [
     "tkinterdnd2>=0.3",
     "loguru>=0.7",
     "hypothesis",
-    "pypdf>=3.0"
+    "pypdf>=3.0",
+    "psutil"
 ]
 
 [tool.setuptools.packages.find]
