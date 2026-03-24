@@ -12,6 +12,7 @@ import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from ttkbootstrap.tooltip import ToolTip
 from tkinterdnd2 import DND_FILES, TkinterDnD
+from loguru import logger
 
 from PIL import Image, ImageTk, UnidentifiedImageError
 # adding async thumbnails
@@ -45,7 +46,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
         # async thumbnails
         self._thumbnail_executor = concurrent.futures.ThreadPoolExecutor(
             max_workers = THUMBNAIL_WORKERS,
-            thread_name_pref = 'thumbnail'
+            thread_name_prefix = 'thumbnail'
         )
         self._thumbnail_lock = Lock()
         self._pending_thumbs = {} # row_id => Future
@@ -150,6 +151,22 @@ class ImageToPdfApp(TkinterDnD.Tk):
         self.bind('<Control-Down>', lambda e: self.on_move_down())
         self.bind('<Control-r>', lambda e: self.on_rotate())
         self.bind('<Control-q>', lambda e: self.destroy())
+
+
+    def destroy(self):
+        """Clean shutdown of background threads"""
+        self._shutdown_request = True
+
+        # Cancel pending thumbnails
+        with self._thumbnail_lock:
+            for future in self._pending_thumbs.values():
+                future.cancel()
+            self._pending_thumbs.clear()
+
+        self._thumbnail_executor.shutdown(wait=False, cancel_futures=True)
+
+        super().destroy()
+
 
    
     #-----------------------Event Handlers------------------------------------------------------
@@ -353,22 +370,25 @@ class ImageToPdfApp(TkinterDnD.Tk):
         """Shared logic for adding images to the list (D-n-D and add)"""
         self.loaded_images.extend(new_imgs)
         for path_str, pil_img in zip (file_paths, new_imgs):
-            thumb = pil_img.copy()
-            thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
-            tk_thumb = ImageTk.PhotoImage(thumb)
-
             row_id = self.imgs_tree.insert(
                 "",
                 "end",
                 text="",
                 values=(Path(path_str).name,),
-                image=tk_thumb
+                # Image parameter is set asynchronously
             )
-            self._thumb_refs[row_id] = tk_thumb
-
+            with self._thumbnail_lock:
+                future = self._thumbnail_executor.submit(
+                    self._generate_thumbnail_async,
+                    pil_img,
+                    row_id,
+                    path_str
+                )
+                self._pending_thumbs[row_id] = future
+            
         self.status.config(text=f"{len(self.loaded_images)} image(s) loaded.")
     
-    def _async_thumbnail_generation(self, pil_img: Image.Image, row_id: str, path: str):
+    def _generate_thumbnail_async(self, pil_img: Image.Image, row_id: str, path: str):
         """Generate thumbnail in the background thread"""
         try:
             # Stop performance in case app is closed
@@ -379,11 +399,11 @@ class ImageToPdfApp(TkinterDnD.Tk):
             thumb.thumbnail((self.THUMB_MAX, self.THUMB_MAX), Image.Resampling.LANCZOS)
 
             # Schedule UI update in the main thread
-            self._after_idle(self._update_thumb_ui, thumb, row_id, path)
+            self.after_idle(self._update_thumb_ui, thumb, row_id, path)
         
         except Exception as e:
             logger.error(f'Thumbnail generation failed for: {path}: {e}')
-            self._after_idle(self._handle_thumb_error, row_id, path)
+            self.after_idle(self._handle_thumb_error, row_id, path)
 
     def _update_thumb_ui(self, thumb: Image.Image, row_id, path):
         """Update the UI with generated thumbnails in main thread"""
@@ -394,7 +414,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
                     return
                 
                 tk_thumb = ImageTk.PhotoImage(thumb)
-                self.imgs_tree.set(row_id, "Image", tk_thumb)
+                self.imgs_tree.item(row_id, image=tk_thumb)
                 self._thumb_refs[row_id] = tk_thumb
 
                 # Remove from pending

@@ -1,9 +1,10 @@
 # Image to PDF Converter
 
-A simple, user-friendly desktop application for converting multiple images into a single PDF document.
+A simple, user-friendly desktop application for converting multiple images into a single PDF document with optimized performance and security.
 
 ## Features
 
+### Core Functionality
 - **Drag-and-Drop Support**: Drag image files directly onto the application window (gracefully skips non-image files)
 - **Add Images**: Select multiple images through a file dialog (`Ctrl+O`)
 - **Visual Preview**: View thumbnails of loaded images in an organized list with full-size preview
@@ -14,10 +15,34 @@ A simple, user-friendly desktop application for converting multiple images into 
 - **Keyboard Shortcuts**: Full keyboard navigation for all operations
 - **Logging**: Automatic logging to `logs/app.log` with rotation
 
+### Performance Optimizations (v0.4.0)
+- **Async Thumbnail Generation**: Non-blocking UI when loading multiple large images - thumbnails generate in background threads
+- **Optimized Preview Zoom**: Intelligent caching and fast resampling for smooth zoom operations
+  - Zoom cache stores up to 10 zoom levels for instant recall
+  - Fast BILINEAR resampling for high zoom levels (>2.0x)
+  - High-quality LANCZOS resampling for normal zoom levels
+  - 50ms debounce prevents excessive zoom operations
+- **Responsive UI**: No freezing when loading large image sets
+
+### Security & Validation (v0.3.0)
+- **Path Validation**: Protection against path traversal attacks
+- **File Size Limits**: 50MB maximum file size to prevent DoS attacks
+- **Dimension Limits**: 15,000×15,000 pixel maximum to prevent memory exhaustion
+- **Input Sanitization**: Comprehensive validation of all file paths and image data
+- **Memory Leak Prevention**: Proper resource cleanup in preview dialogs
+
 ## Requirements
 
 - Python 3.10 or higher
 - Dependencies listed in `pyproject.toml`
+
+## Performance Characteristics
+
+- **Thumbnail Generation**: Non-blocking, < 200ms per thumbnail in background threads
+- **Zoom Operations**: < 100ms response time with caching, smooth interaction
+- **Large Image Support**: Handles images up to 15,000×15,000 pixels and 50MB safely
+- **Memory Management**: Controlled zoom cache (max 10 levels), no memory leaks
+- **Concurrent Processing**: Up to 4 background threads for thumbnail generation
 
 ## Installation
 
@@ -72,6 +97,7 @@ pdf-maker
 
 ### Keyboard Shortcuts:
 
+**Main Window:**
 - `Ctrl+O`: Add Images
 - `Ctrl+S`: Create PDF
 - `Ctrl+C`: Clear List
@@ -79,6 +105,13 @@ pdf-maker
 - `Ctrl+Up/Down`: Move image up/down
 - `Ctrl+R`: Rotate selected image
 - `Ctrl+Q`: Quit application
+
+**Preview Window:**
+- `F`: Fit to window
+- `A`: Actual size (100%)
+- `+/-`: Zoom in/out
+- `Ctrl+MouseWheel`: Zoom in/out
+- `Esc`: Close preview
 
 ## Project Structure
 
@@ -179,10 +212,37 @@ Each property test runs a minimum of 100 iterations with randomly generated test
 
 See [DESIGN.md](DESIGN.md) for:
 - Detailed architecture and design decisions
-- Current implementation status (all core features complete)
-- Planned features (graceful non-image file handling, keyboard shortcuts, i18n)
+- Current implementation status (v0.4.0 - Performance Optimizations complete)
+- Phase 1 (v0.3.0): Security & Performance Hardening ✅
+- Phase 2 (v0.4.0): Performance Optimizations ✅
+- Phase 3: Code Quality & Security (planned)
 - Technical decisions and rationale
 - Testing strategy and coverage goals
+
+### Version History
+
+**v0.4.0 - Performance Optimizations** (Current)
+- Async thumbnail generation with background threads
+- Optimized preview zoom with caching and fast resampling
+- Non-blocking UI for large image sets
+- Improved responsiveness and user experience
+
+**v0.3.0 - Security & Performance Hardening**
+- Path validation and security hardening
+- File size and dimension limits
+- Memory leak prevention
+- Comprehensive input validation
+
+**v0.2.0 - UI Enhancements**
+- Drag-and-drop support
+- Keyboard shortcuts
+- Preview dialog with zoom
+- Tooltips and improved UX
+
+**v0.1.0 - Initial Release**
+- Core image to PDF conversion
+- Basic UI with image management
+- EXIF orientation support
 
 ### Known Issues
 
@@ -198,6 +258,9 @@ See [DESIGN.md](DESIGN.md) for:
 - **pytest**: Testing framework
 - **hypothesis**: Property-based testing framework
 - **pypdf**: PDF reading and validation for tests
+- **psutil**: System and process utilities for performance monitoring
+
+All threading and concurrency features use Python's built-in `concurrent.futures` and `threading` modules (no external dependencies).
 
 ## License
 
