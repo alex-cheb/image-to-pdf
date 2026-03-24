@@ -88,6 +88,13 @@ class ImageToPdfApp(TkinterDnD.Tk):
         ToolTip(clear_button, text = "Remove all images from the list")
         ToolTip(create_button, text = "Generate PDF")
 
+        # --- Status bar ---
+        self.label = tb.Label(self, 
+            text="Ctrl+O - select, Ctrl+C - Clear, Ctrl+S - Create .pdf, Ctrl+R - rotate, Ctrl+Q - quit",  anchor="center")
+        self.label.pack(side=BOTTOM, fill=X)
+
+        self.status = tb.Label(self, text="No images loaded.", anchor="center")
+        self.status.pack(fill=X, side=BOTTOM, padx=5, pady=5)
         
         # --- Main area: tree + side panel ---
         main_area = tb.Frame(self)
@@ -138,19 +145,11 @@ class ImageToPdfApp(TkinterDnD.Tk):
         except Exception as e:
             messagebox.showerror("Error", f"Drag-and-drop failure: {e}")
         
-        # --- Status bar ---
-        self.status = tb.Label(self, text="No images loaded.", anchor="w")
-        self.status.pack(fill=X, side=BOTTOM, padx=5, pady=5)
-
+        
         # --- Binding shortcuts ---
-        self.bind('<Control-o>', lambda e: self.on_add_images())
-        self.bind('<Control-s>', lambda e: self.on_create_pdf())
-        self.bind('<Control-c>', lambda e: self.on_clear_list())
         self.bind('<Delete>', lambda e: self.on_delete())
-        self.bind('<Control-Up>', lambda e: self.on_move_up())
-        self.bind('<Control-Down>', lambda e: self.on_move_down())
-        self.bind('<Control-r>', lambda e: self.on_rotate())
-        self.bind('<Control-q>', lambda e: self.destroy())
+        self.bind('<Control-KeyPress>', self._handle_ctrl_shortcuts)
+
 
 
     def destroy(self):
@@ -428,6 +427,21 @@ class ImageToPdfApp(TkinterDnD.Tk):
             self._pending_thumbs.pop(row_id, None)
         logger.warning(f'Using a placeholder thumb for: {row_id}, {path}')
 
+    def _handle_ctrl_shortcuts(self, event):
+        """Handle shortcuts with no layout dependencies"""
+        if not (event.state & 0x0004):
+            return
+
+        keycode_map = {
+            79: self.on_add_images, # O
+            83: self.on_create_pdf, # S
+            67: self.on_clear_list, # C
+            82: self.on_rotate, # R
+            81: self.destroy, # Q
+        }
+        if event.keycode in keycode_map:
+            keycode_map[event.keycode]()
+
 
 
 class PreviewDialog(tb.Toplevel):
@@ -473,8 +487,7 @@ class PreviewDialog(tb.Toplevel):
         # --- Event bindings section
         # Event bindings for keyboard controls
         self.bind('<Escape>', lambda e: self.destroy())
-        self.bind('<f>', lambda e: self.fit_to_window())
-        self.bind('<a>', lambda e: self.actual_size())
+        self.bind('<KeyPress>', self._shortcuts_handler)
         self.bind('<plus>', lambda e: self.zoom_img(factor=1.1))
         self.bind('<minus>', lambda e: self.zoom_img(factor=0.9))
         # Event bindings for mouse controls
@@ -587,6 +600,14 @@ class PreviewDialog(tb.Toplevel):
                 self.zoom_img(1.1)
             elif event.num == 5 or event.delta < 0:
                 self.zoom_img(0.9)
+    
+    def _shortcuts_handler(self, event):
+        keycode_map = {
+            70: self.fit_to_window,
+            65: self.actual_size
+        }
+        if event.keycode in keycode_map:
+            keycode_map[event.keycode]()
 
 if __name__ == "__main__":
     app = ImageToPdfApp()

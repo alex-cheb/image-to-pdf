@@ -102,7 +102,6 @@ pdf-maker
 - `Ctrl+S`: Create PDF
 - `Ctrl+C`: Clear List
 - `Delete`: Remove selected image
-- `Ctrl+Up/Down`: Move image up/down
 - `Ctrl+R`: Rotate selected image
 - `Ctrl+Q`: Quit application
 
@@ -112,6 +111,8 @@ pdf-maker
 - `+/-`: Zoom in/out
 - `Ctrl+MouseWheel`: Zoom in/out
 - `Esc`: Close preview
+
+**Note:** All keyboard shortcuts work regardless of your keyboard layout (English, Ukrainian, etc.)
 
 ## Project Structure
 
