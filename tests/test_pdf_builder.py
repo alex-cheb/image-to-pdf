@@ -4,7 +4,7 @@ from pathlib import Path
 from hypothesis import given, settings, strategies as st
 from PIL import Image
 from tests.test_helpers import *
-from core import image_loader, pdf_builder
+from src.core import image_loader, pdf_builder
 
 
 def test_create_single_page_pdf(tmp_image_dir, tmp_pdf_dir):

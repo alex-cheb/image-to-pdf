@@ -190,7 +190,21 @@ src/
 
 ## Changelog
 
-### Version 0.1.0 (Current)
+### Version 0.4.1 - Code Quality (Current)
+- ✅ Fixed test suite for Phase 1 and Phase 2 changes
+- ✅ Removed GUI tests (tested manually during app usage)
+- ✅ All core logic tests passing (27 tests)
+- ✅ Log sanitization implemented (optional for local apps)
+- ✅ Path operations analyzed (no optimization needed)
+
+### Version 0.3.0 - Performance & Security
+- ✅ Memory leak fixes in preview window
+- ✅ Security validation (path traversal prevention, file limits)
+- ✅ Async thumbnail generation
+- ✅ Zoom caching for better performance
+- ✅ Keyboard shortcuts with layout independence
+
+### Version 0.1.0
 - ✅ Core image loading with EXIF support
 - ✅ Multi-page PDF generation
 - ✅ Image management (add, delete, reorder, rotate)

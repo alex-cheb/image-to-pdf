@@ -3,7 +3,7 @@ import random
 from PIL import Image, UnidentifiedImageError
 from pathlib import Path
 
-from core import image_loader as il
+from src.core import image_loader as il
 from tests.test_helpers import *
 
 @pytest.mark.parametrize('fmt,ext', [
@@ -33,7 +33,7 @@ def test_nonexistent_file_raises_proper_error(tmp_image_dir):
     Requirement 2.1
     """
     path = tmp_image_dir/'non_existent_file.jpg'
-    with pytest.raises(FileNotFoundError, match="does not exist or is not a file."):
+    with pytest.raises(ValueError, match="Invalid or inaccessible path"):
         images = il.add_images([path])
 
 
@@ -56,7 +56,7 @@ def test_corrupt_file_load_image(tmp_image_dir):
     """
     path = tmp_image_dir / f'test.jpg'
     create_corrupted_file(path)
-    with pytest.raises(UnidentifiedImageError, match="could not be identified as an image:"):
+    with pytest.raises(ValueError, match="Unsafe image file:"):
         images = il.add_images([path])
 
 
