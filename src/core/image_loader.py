@@ -99,17 +99,10 @@ def _validate_file_path(path_str: str) -> Optional[Path]:
         not existing files, not readable """
     try:
         path = Path(path_str).resolve()
-
-        # if not path.exists():
-        #     logger.warning(f'The {_sanitize_path_for_log(path_str)} does not exist')
-        #     return None
+        
         if not path.exists() or not path.is_file():
             logger.warning(f'The {_sanitize_path_for_log(path_str)} does not exist or is not a file')
             return None
-
-        # if not path.is_file():
-        #     logger.warning(f'The {_sanitize_path_for_log(path_str)} is not a file')
-        #     return None
 
         if not os.access(path, os.R_OK):
             logger.warning(f'The file {_sanitize_path_for_log(path_str)} is not a readable')
