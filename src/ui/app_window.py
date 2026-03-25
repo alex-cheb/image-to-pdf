@@ -95,7 +95,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
 
         self.status = tb.Label(self, text="No images loaded.", anchor="center")
         self.status.pack(fill=X, side=BOTTOM, padx=5, pady=5)
-        
+
         # --- Main area: tree + side panel ---
         main_area = tb.Frame(self)
         main_area.pack(fill=BOTH, expand=True, padx=10, pady=10)
@@ -401,7 +401,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
             self.after_idle(self._update_thumb_ui, thumb, row_id, path)
         
         except Exception as e:
-            logger.error(f'Thumbnail generation failed for: {path}: {e}')
+            logger.error(f'Thumbnail generation failed for: {Path(path).name}: {e}')
             self.after_idle(self._handle_thumb_error, row_id, path)
 
     def _update_thumb_ui(self, thumb: Image.Image, row_id, path):
@@ -419,13 +419,13 @@ class ImageToPdfApp(TkinterDnD.Tk):
                 # Remove from pending
                 self._pending_thumbs.pop(row_id, None)
         except Exception as e:
-            logger.error(f'UI update failed for: {row_id}, {path}')
+            logger.error(f'UI update failed for: {row_id}, {Path(path).name}')
 
     def _handle_thumb_error(self, row_id, path):
         """Handles error in thumb generation"""
         with self._thumbnail_lock:
             self._pending_thumbs.pop(row_id, None)
-        logger.warning(f'Using a placeholder thumb for: {row_id}, {path}')
+        logger.warning(f'Using a placeholder thumb for: {row_id}, {Path(path).name}')
 
     def _handle_ctrl_shortcuts(self, event):
         """Handle shortcuts with no layout dependencies"""
