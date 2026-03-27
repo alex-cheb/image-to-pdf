@@ -11,9 +11,12 @@ This document outlines the architecture, design decisions, implemented features,
 src/
 ├── core/
 │   ├── image_loader.py      # Image validation, loading, EXIF handling
-│   └── pdf_builder.py       # PDF generation from PIL images
+│   ├── pdf_builder.py       # PDF generation from PIL images
+│   └── pdf_extractor.py     # PDF image extraction logic
 ├── ui/
-│   └── app_window.py        # Tkinter GUI with drag-and-drop support
+│   ├── app_window.py        # Tkinter GUI with drag-and-drop support
+│   ├── preview_dialog.py    # Image preview window with zoom controls
+│   └── extractor_window.py  # PDF image extraction dialog
 └── main.py                  # Entry point with logging configuration
 ```
 
@@ -99,7 +102,31 @@ src/
 
 ## Planned Features 📋
 
-### Advanced Features (Future Versions)
+### PDF Image Extraction (v0.5.0)
+**Priority**: Medium  
+**Effort**: 6-8 hours  
+**Status**: Planned
+
+Add functionality to extract images from PDF files, providing a reverse operation to the main image-to-PDF conversion feature.
+
+#### Features
+- Select and preview PDF files
+- Extract all images from PDF with thumbnail preview grid
+- Selective image export (choose which images to save)
+- Format options (PNG and JPEG with quality control)
+- Batch processing for large PDFs without UI freezing
+- Progress feedback during extraction
+- Output directory selection
+
+#### Technical Details
+- New module: `src/core/pdf_extractor.py` — PDF parsing and image extraction logic
+- New dialog: `src/ui/extractor_window.py` — Extraction UI with preview grid
+- Main toolbar button: "Extract from PDF" with keyboard shortcut (`Ctrl+E`)
+- Uses `pypdf` library for PDF processing
+- Supports common PDF formats and image encodings
+- Handles large PDFs (100+ pages) without freezing UI
+
+### Advanced Features (Future Releases)
 **Priority**: Low  
 **Effort**: Variable
 
@@ -182,13 +209,19 @@ src/
 - **ttkbootstrap**: Modern themed tkinter widgets
 - **tkinterdnd2**: Cross-platform drag-and-drop
 - **loguru**: Logging
+- **pypdf**: PDF reading and image extraction
 - **pytest**: Testing framework
 - **hypothesis**: Property-based testing
-- **pypdf**: PDF validation
 
 ---
 
 ## Changelog
+
+### Version 0.5.0 - PDF Image Extraction (Planned)
+- 🔄 Add PDF image extraction capability
+- 🔄 New extraction dialog with image preview grid
+- 🔄 Format selection (PNG/JPEG) and batch processing
+- 🔄 Extract selected images to output directory
 
 ### Version 0.4.1 - Code Quality (Current)
 - ✅ Fixed test suite for Phase 1 and Phase 2 changes
