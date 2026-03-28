@@ -21,6 +21,7 @@ from threading import Lock
 import queue
 # project imports
 from ui.preview_dialog import PreviewDialog
+from ui.extractor_dialog import ExtractorDialog
 from core.image_loader import add_images, add_images_lenient
 from core.pdf_builder import build_pdf
 
@@ -80,13 +81,15 @@ class ImageToPdfApp(TkinterDnD.Tk):
         create_button = tb.Button(
             toolbar,
             text="Create PDF", 
-            command=self.on_create_pdf
+            command=self.on_create_pdf,
+            bootstyle="success"
             )
         create_button.pack(side=LEFT, padx=10, pady=5)
         extract_button = tb.Button(
             toolbar,
             text='Extract Images',
-            command=self.on_extract_img
+            command=self.on_extract_img,
+            bootstyle="info"
             )
         extract_button.pack(side=RIGHT, padx=10, pady=5)
         # Button tooltips
@@ -269,7 +272,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
 
     def on_extract_img(self):
         """Extract images from pdf file handler"""
-        pass
+        ExtractorDialog(self)
         
     
 

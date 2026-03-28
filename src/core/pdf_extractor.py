@@ -24,14 +24,16 @@ def extract_images_from_pdf(pdf_path: Path) -> List[Tuple[Image.Image, int, int]
 
     for page_num, page in enumerate(reader.pages, start=1):
         try:
-            # Checki if the page contains resources
+            page_start = len(imgs)
+            # Check if the page contains resources
             resources = page.get('/Resources')
             if resources:
                 _extract_from_resources(resources, seen_objs, imgs, page_num)
             
             # Extract inline images from the page content
             _extract_inline_images(page, imgs, page_num)
-
+            for page_img_idx, item in enumerate(imgs[page_start:], start=1):
+                imgs[page_start + page_img_idx - 1] = (item[0], item[1], page_img_idx)
         except Exception as e:
             logger.error(f"Error processing page {page_num}: {e}")
     logger.info(f"Extracted {len(imgs)} images from PDF: {pdf_path}")
@@ -39,7 +41,8 @@ def extract_images_from_pdf(pdf_path: Path) -> List[Tuple[Image.Image, int, int]
 
 def save_images(
         imgs: List[Tuple[Image.Image, int, int]], 
-        output_dir: Path, 
+        output_dir: Path,
+        prefix: str = "image", 
         format: str = 'PNG') -> List[Path]:
     """Save extracted images to the specified directory in the given format."""
     output_dir = Path(output_dir)
@@ -48,7 +51,7 @@ def save_images(
     saved_paths = []
 
     for img, page_num, idx in imgs:
-        f_name = f"image_{page_num}_{idx}.{format}"
+        f_name = f"{prefix}_{page_num}_{idx}.{format}"
         output_path = output_dir / f_name
 
         try:
@@ -62,7 +65,7 @@ def save_images(
 
 def _extract_from_resources(resources, 
         seen_objs : set, 
-        imgs: List[Tuple[Image.Image, int, int]], 
+        imgs: List[Tuple[Image.Image, int]], 
         page_num: int) -> None:
     """Recursively extract images from PDF resources."""
     resources = _resolve(resources)
@@ -71,7 +74,7 @@ def _extract_from_resources(resources,
         return
     
     x_objs = _resolve(x_objs_dics)
-    for idx, obj_name in enumerate(x_objs, start=1):
+    for obj_name in x_objs:
         obj = _resolve(x_objs[obj_name])
         
         # Avoid duplicates
@@ -86,7 +89,7 @@ def _extract_from_resources(resources,
                 seen_objs.add(obj_id)
                 img = _safe_extract(obj, page_num, obj_name)
                 if img:
-                    imgs.append((img, page_num, idx))
+                    imgs.append((img, page_num))
 
         elif subtype == '/Form':
             # Form can have its own /Resources entry
@@ -96,19 +99,16 @@ def _extract_from_resources(resources,
                 if nested_resources:
                     _extract_from_resources(nested_resources, seen_objs, imgs, page_num)
 
-def _extract_inline_images(page, imgs: List[Tuple[Image.Image, int, int]], page_num: int) -> None:
+def _extract_inline_images(page, imgs: List[Tuple[Image.Image, int]], page_num: int) -> None:
     """Extract inline images from page"""
-    page_imgs = [img for img, p, _ in imgs if p == page_num]
-    start_idx = len(page_imgs) + 1
-
     try:
-        for offset, img in enumerate(page.images):
+        for img in page.images:
             if getattr(img , 'indirect_reference', None) is None:
                 # if indirect regerence is None, this is an inline image, not XObject:
                 try:
                     pic = Image.open(io.BytesIO(img.data))
                     pic.load()  # Force loading to catch errors
-                    imgs.append((pic, page_num, start_idx + offset))
+                    imgs.append((pic, page_num))
                 except Exception as e:
                     logger.error(f"Failed to decode inline image from page {page_num}: {e}")
     except Exception as e:
@@ -170,17 +170,19 @@ def _extract_img_from_obj(obj) -> Image.Image | None:
         return None
     
     # --- Get image format ---
-    color_space = obj.get('/ColorSpace')
-    if isinstance(color_space, pypdf.generic.IndirectObject):
-        color_space = _resolve(color_space)
+    color_space = _resolve(obj.get('/ColorSpace'))
     if isinstance(color_space, pypdf.generic.ArrayObject) and len(color_space) > 0:
         color_space = color_space[0]
     color_space = str(color_space)
     # ---
 
     # --- Get attributes ---
-    width = int(obj.get('/Width'))
-    height = int(obj.get('/Height'))
+    try:
+        width = int(obj['/Width'])
+        height = int(obj['/Height'])
+    except (KeyError, TypeError) as e:
+        logger.error(f"Image object missing required dimensions: {e}")
+        return None
     pdf_filter = obj.get('/Filter')
 
     # Getting images stored in JPEG format variations
