@@ -120,7 +120,7 @@ class ImageToPdfApp(TkinterDnD.Tk):
         mv_dwn_btn.pack(pady=(10, 2))
         rt_btn = tb.Button(side_panel, text="↻", width=3, command=self.on_rotate)
         rt_btn.pack(pady=(10, 0))  
-        rm_btn = tb.Button(side_panel, text="X", width=3, command=self.on_delete)
+        rm_btn = tb.Button(side_panel, text="X", width=3, command=self.on_delete, bootstyle="danger")
         rm_btn.pack(pady=(10, 0))  
         prv_btn = tb.Button(side_panel, text="🔍", width=3, command=self.on_preview)
         prv_btn.pack(pady=(10, 0))

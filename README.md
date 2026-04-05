@@ -15,6 +15,23 @@ A simple, user-friendly desktop application for converting multiple images into 
 - **Keyboard Shortcuts**: Full keyboard navigation for all operations
 - **Logging**: Automatic logging to `logs/app.log` with rotation
 
+### PDF Image Extraction (v0.5.0)
+- **Extract Images from PDF**: Extract individual images from PDF files for reuse
+  - Preview extracted images before saving
+  - Select which images to keep with visual checkboxes
+  - Customize output filename prefix
+  - Choose output format (PNG, JPEG with fallback support)
+  - Support for per-page image indexing
+  - Handles XObjects, inline images, multiple color spaces
+- **Smart Extraction Workflow**:
+  - `Ctrl+O` - Select PDF file
+  - `Ctrl+A` - Toggle select/deselect all extracted images
+  - `Ctrl+S` - Extract and save selected images
+  - `Escape/Ctrl+Q` - Close extraction dialog
+- **Dynamic Defaults**: Auto-default output folder to PDF's directory for convenience
+- **Text Tooltips**: File paths display full paths in tooltips for long filenames
+- **Robust Error Handling**: Graceful handling of edge cases and varied PDF formats
+
 ### Performance Optimizations (v0.4.0)
 - **Async Thumbnail Generation**: Non-blocking UI when loading multiple large images - thumbnails generate in background threads
 - **Optimized Preview Zoom**: Intelligent caching and fast resampling for smooth zoom operations
@@ -121,13 +138,16 @@ pdf-maker
 ├── src/
 │   ├── core/
 │   │   ├── image_loader.py    # Image validation and loading logic
-│   │   └── pdf_builder.py     # PDF generation logic
+│   │   ├── pdf_builder.py     # PDF generation logic
+│   │   └── pdf_extractor.py   # PDF image extraction and batch saving
 │   ├── ui/
-│   │   └── app_window.py      # Main GUI application with drag-and-drop
+│   │   ├── app_window.py      # Main GUI application with drag-and-drop
+│   │   └── extractor_dialog.py # PDF image extraction dialog window
 │   └── main.py                # Application entry point with logging setup
 ├── tests/
 │   ├── test_image_loader.py   # Tests for image loading
 │   ├── test_pdf_builder.py    # Tests for PDF generation
+│   ├── test_pdf_extractor.py  # Tests for PDF image extraction
 │   ├── test_helpers.py        # Test utility functions
 │   └── conftest.py            # Shared pytest fixtures
 ├── logs/

@@ -128,7 +128,8 @@ class ExtractorDialog(tb.Toplevel):
             command=self.on_extract, 
             bootstyle="success").pack(side=RIGHT, padx=5)
 
-
+        # Bind mousewheel to vertical scroll
+        canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1*(e.delta/120)), "units"))
         # --- Keyboard Shortcuts ---
         self.bind('<Escape>', lambda e: self.destroy())
         self.bind('<Control-KeyPress>', self._handle_ctrl_shortcuts)

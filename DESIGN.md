@@ -16,7 +16,7 @@ src/
 ├── ui/
 │   ├── app_window.py        # Tkinter GUI with drag-and-drop support
 │   ├── preview_dialog.py    # Image preview window with zoom controls
-│   └── extractor_window.py  # PDF image extraction dialog
+│   └── extractor_dialog.py  # PDF image extraction dialog window
 └── main.py                  # Entry point with logging configuration
 ```
 
@@ -98,37 +98,41 @@ src/
 - **Graceful non-image file handling**: Silently skips non-image files, logs warnings
 - **Security hardening**: Path validation and sanitization for all dropped files
 
+### PDF Image Extraction
+**Status**: Complete (v0.5.0)
+
+Extracted images from PDF files, providing a reverse operation to the main image-to-PDF conversion feature.
+
+#### Features
+- Select and preview PDF files with dynamic default output folder
+- Extract all images from PDF with thumbnail preview grid (3-column layout)
+- Selective image export via visual checkboxes (choose which images to save)
+- Format options (PNG and JPEG with graceful fallback)
+- Batch image processing without UI freezing
+- Progress feedback via tooltips and file path display
+- Output directory selection with persistent defaults
+- Custom filename prefix with automatic sanitization
+
+#### Keyboard Shortcuts in Extraction Dialog
+- `Ctrl+O` — Select PDF file
+- `Ctrl+A` — Toggle select/deselect all extracted images  
+- `Ctrl+S` — Extract and save selected images
+- `Escape` / `Ctrl+Q` — Close extraction dialog
+
+#### Technical Implementation
+- Module: `src/core/pdf_extractor.py` — Function-based PDF parsing and image extraction
+- Dialog: `src/ui/extractor_dialog.py` — Extraction UI with preview grid and selection state
+- Integrated button: "Extract from PDF" in main application toolbar
+- Uses `pypdf` library for PDF processing
+- Per-page image indexing with sanitized filenames
+- Supports XObjects and inline images
+- Handles multiple color spaces (RGB, CMYK, Grayscale, Indexed)
+
 ---
 
 ## Planned Features 📋
 
-### PDF Image Extraction (v0.5.0)
-**Priority**: Medium  
-**Effort**: 6-8 hours  
-**Status**: Planned
-
-Add functionality to extract images from PDF files, providing a reverse operation to the main image-to-PDF conversion feature.
-
-#### Features
-- Select and preview PDF files
-- Extract all images from PDF with thumbnail preview grid
-- Selective image export (choose which images to save)
-- Format options (PNG and JPEG with quality control)
-- Batch processing for large PDFs without UI freezing
-- Progress feedback during extraction
-- Output directory selection
-
-#### Technical Details
-- New module: `src/core/pdf_extractor.py` — PDF parsing and image extraction logic
-- New dialog: `src/ui/extractor_window.py` — Extraction UI with preview grid
-- Main toolbar button: "Extract from PDF" with keyboard shortcut (`Ctrl+E`)
-- Uses `pypdf` library for PDF processing
-- Supports common PDF formats and image encodings
-- Handles large PDFs (100+ pages) without freezing UI
-
 ### Advanced Features (Future Releases)
-**Priority**: Low  
-**Effort**: Variable
 
 - **Undo/Redo functionality**: Allow users to undo/redo operations
 - **Batch image processing**: Apply transformations to multiple images at once
